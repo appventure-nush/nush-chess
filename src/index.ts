@@ -3,6 +3,7 @@ import express, {Application, NextFunction} from 'express';
 import bodyParser from "body-parser";
 import path from "path";
 import http from "http";
+import {Chess} from "chess.js";
 
 const app = express();
 
@@ -18,24 +19,40 @@ const server = http.createServer(app);
 
 const io = new Server(server);
 
-let default_fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-let globalState = default_fen;
+const game = new Chess();
 
 io.on("connection", (socket)=>{
   console.log("New connection", socket.id)
 
-  socket.emit("state", globalState);
-
-  socket.on("state", (state)=>{
-    // TODO: check is state is valid
-    // TODO: prevent players from playing both sides
-    globalState = state;
-    socket.broadcast.emit("state", state);
+  socket.on("move", (move)=>{
+    if(!socket.data.role){
+      socket.emit("error", "Select a role first");
+      return;
+    }
+    if(game.turn() != socket.data.role[0]){
+      socket.emit("error", "Not your turn");
+      return;
+    }
+    const result = game.move(move);
+    if(result == null){
+      socket.emit("error", "Invalid move");
+      return;
+    }
+    socket.broadcast.emit("state", game.fen());
   })
 
   socket.on("reset", ()=>{
-    globalState = default_fen;
-    io.emit("state", default_fen);
+    game.reset()
+    io.emit("state", game.fen());
+  })
+
+  socket.on("role", (role)=>{
+    if(!["white", "black"].includes(role)){
+      return socket.emit("error", "invalid role");
+    }
+    socket.data.role = role;
+    console.log(socket.id, role);
+    socket.emit("state", game.fen());
   })
 })
 

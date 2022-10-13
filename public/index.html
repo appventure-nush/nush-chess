@@ -20,15 +20,25 @@
             crossorigin="anonymous"></script>
 </head>
 <body>
-<div id="board1" style="width: 400px"></div>
-<br>
-<div id="state"></div><br>
-<button onclick="reset()" type="button">Reset</button>
+<div id="game" style="display: none">
+    <div id="role"></div><br>
+
+    <div id="board1" style="width: 400px"></div>
+    <br>
+    <div id="state"></div><br>
+    <button onclick="reset()" type="button">Reset</button>
+</div>
+<div id="pregame">
+    <button onclick="white()" type="button">Play as white</button>
+    <button onclick="black()" type="button">Play as black</button>
+</div>
 
 <script>
 
   const socket = io();
+  let role = "";
   var game = new Chess();
+  var board;
 
   socket.on("state", (state) => {
     console.log("Got state", state);
@@ -42,10 +52,42 @@
     socket.emit("reset");
   }
 
+  function white(){
+    socket.emit("role", "white")
+    role = "white";
+    document.getElementById("role").innerText = "You're playing as white";
+    initGame();
+  }
+  function black(){
+    socket.emit("role", "black")
+    role = "black";
+    document.getElementById("role").innerText = "You're playing as black";
+    initGame();
+  }
 
+  function initGame(){
+    document.getElementById("pregame").style = "display: none";
+    document.getElementById("game").style = "display: block";
+    var config = {
+      draggable: true,
+      position: 'start',
+      onDragStart: onDragStart,
+      onDrop: onDrop,
+      onSnapEnd: onSnapEnd,
+      pieceTheme: "https://chessboardjs.com/img/chesspieces/alpha/{piece}.png",
+      orientation: role,
+    }
+    board = Chessboard('board1', config)
+  }
   function onDragStart(source, piece, position, orientation) {
     // do not pick up pieces if the game is over
     if (game.game_over()) return false
+
+    // Can't play if not our turn
+    console.log(game.turn(), role[0]);
+    if(game.turn() !== role[0]){
+      return false;
+    }
 
     // only pick up pieces for the side to move
     if ((game.turn() === 'w' && piece.search(/^b/) !== -1) ||
@@ -65,7 +107,7 @@
     // illegal move
     if (move === null) return 'snapback'
 
-    socket.emit("state", game.fen());
+    socket.emit("move", move.san);
     console.log(game.fen());
 
     updateStatus()
@@ -106,18 +148,6 @@
     }
     document.getElementById("state").innerText = status;
   }
-
-  var config = {
-    draggable: true,
-    position: 'start',
-    onDragStart: onDragStart,
-    onDrop: onDrop,
-    onSnapEnd: onSnapEnd,
-    pieceTheme: "https://chessboardjs.com/img/chesspieces/alpha/{piece}.png"
-  }
-  var board = Chessboard('board1', config)
-  console.log(game.fen());
-  updateStatus();
 </script>
 </body>
 </html>
