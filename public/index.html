@@ -21,11 +21,17 @@
 </head>
 <body>
 <div id="game" style="display: none">
-    <div id="role"></div><br>
+    <div id="role"></div>
+    <br>
 
     <div id="board1" style="width: 400px"></div>
     <br>
-    <div id="state"></div><br>
+    <div id="state"></div>
+    <br>
+    <div id="votestate"></div>
+    <br>
+    <div id="votes"></div>
+    <br>
     <button onclick="reset()" type="button">Reset</button>
 </div>
 <div id="pregame">
@@ -37,35 +43,57 @@
 
   const socket = io();
   let role = "";
+  let nextVoteTimestamp = 0;
   var game = new Chess();
   var board;
 
-  socket.on("state", (state) => {
-    console.log("Got state", state);
-    game.load(state);
+  socket.on("state", ({fen, nextVoteTime}) => {
+    nextVoteTimestamp = nextVoteTime;
+    console.log("Got state", fen);
+    game.load(fen);
     board.position(game.fen());
     updateStatus();
   })
 
-  function reset(){
-    console.log("reset");
+  socket.on("votes", (votes)=>{
+    console.log(votes);
+    document.getElementById("votes").innerText = formatVotes(votes);
+  })
+
+  socket.on("error", (error)=>{
+    alert(error);
+  })
+
+  function reset() {
     socket.emit("reset");
   }
 
-  function white(){
+  // votes should be sorted
+  function formatVotes(votes){
+    let out = "";
+    let i=1;
+    for(const [move, numVotes] of votes){
+      out += `${i}. ${move} (${numVotes} votes)\n`
+      i++;
+    }
+    return out;
+  }
+
+  function white() {
     socket.emit("role", "white")
     role = "white";
     document.getElementById("role").innerText = "You're playing as white";
     initGame();
   }
-  function black(){
+
+  function black() {
     socket.emit("role", "black")
     role = "black";
     document.getElementById("role").innerText = "You're playing as black";
     initGame();
   }
 
-  function initGame(){
+  function initGame() {
     document.getElementById("pregame").style = "display: none";
     document.getElementById("game").style = "display: block";
     var config = {
@@ -79,13 +107,14 @@
     }
     board = Chessboard('board1', config)
   }
+
   function onDragStart(source, piece, position, orientation) {
     // do not pick up pieces if the game is over
     if (game.game_over()) return false
 
     // Can't play if not our turn
     console.log(game.turn(), role[0]);
-    if(game.turn() !== role[0]){
+    if (game.turn() !== role[0]) {
       return false;
     }
 
@@ -107,8 +136,7 @@
     // illegal move
     if (move === null) return 'snapback'
 
-    socket.emit("move", move.san);
-    console.log(game.fen());
+    socket.emit("vote", move.san);
 
     updateStatus()
   }
@@ -148,6 +176,20 @@
     }
     document.getElementById("state").innerText = status;
   }
+
+  setInterval(()=>{
+    const votestate = document.getElementById("votestate");
+    if(nextVoteTimestamp === 0){
+      return;
+    }
+    let text = `${Math.floor((nextVoteTimestamp-new Date().getTime())/1000)} seconds until voting closes. `;
+    if(game.turn() !== role[0]){
+      text += "You cannot vote or have already voted.";
+    }else{
+      text += "You have not voted.";
+    }
+    votestate.innerText = text;
+  }, 500)
 </script>
 </body>
 </html>
