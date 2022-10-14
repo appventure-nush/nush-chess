@@ -60,8 +60,12 @@
     document.getElementById("votes").innerText = formatVotes(votes);
   })
 
+  socket.on("voting_update", ({numVotes, players})=>{
+    document.getElementById("votes").innerText = `${numVotes} players out of ${players} players have voted.`
+  })
+
   socket.on("error", (error)=>{
-    alert(error);
+    console.log(error);
   })
 
   function reset() {
