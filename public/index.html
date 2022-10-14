@@ -186,7 +186,12 @@
     if(nextVoteTimestamp === 0){
       return;
     }
-    let text = `${Math.floor((nextVoteTimestamp-new Date().getTime())/1000)} seconds until voting closes. `;
+    let timeDelta = Math.floor((nextVoteTimestamp-new Date().getTime())/1000);
+
+    let text = `${timeDelta} seconds until voting closes. `;
+    if(timeDelta < 0){
+      text = "Voting has ended";
+    }
     if(game.turn() !== role[0]){
       text += "You cannot vote or have already voted.";
     }else{
