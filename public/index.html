@@ -35,10 +35,9 @@
     <button onclick="reset()" type="button">Reset</button>
 </div>
 <div id="pregame">
-    <button onclick="white()" type="button">Play as white</button>
-    <button onclick="black()" type="button">Play as black</button>
 </div>
-
+<div id="error">
+</div>
 <script>
 
   const socket = io();
@@ -55,17 +54,25 @@
     updateStatus();
   })
 
-  socket.on("votes", (votes)=>{
+  socket.on("join_info", ({role: _role, blacks, whites}) => {
+    role = _role;
+    if(blacks === 0 || whites === 0){
+      document.getElementById("pregame").innerText = "Waiting for more players to join";
+    }
+  })
+
+  socket.on("votes", (votes) => {
     console.log(votes);
     document.getElementById("votes").innerText = formatVotes(votes);
   })
 
-  socket.on("voting_update", ({numVotes, players})=>{
+  socket.on("voting_update", ({numVotes, players}) => {
     document.getElementById("votes").innerText = `${numVotes} players out of ${players} players have voted.`
   })
 
-  socket.on("error", (error)=>{
+  socket.on("error", (error) => {
     console.log(error);
+    document.getElementById("error").innerText = error;
   })
 
   function reset() {
@@ -73,29 +80,37 @@
   }
 
   // votes should be sorted
-  function formatVotes(votes){
+  function formatVotes(votes) {
     let out = "";
-    let i=1;
-    for(const [move, numVotes] of votes){
+    let i = 1;
+    for (const [move, numVotes] of votes) {
       out += `${i}. ${move} (${numVotes} votes)\n`
       i++;
     }
     return out;
   }
 
-  function white() {
-    socket.emit("role", "white")
-    role = "white";
-    document.getElementById("role").innerText = "You're playing as white";
-    initGame();
+  function getToken() {
+    return localStorage.getItem("token");
   }
 
-  function black() {
-    socket.emit("role", "black")
-    role = "black";
-    document.getElementById("role").innerText = "You're playing as black";
-    initGame();
+  function signIn() {
+    location.href = `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
+      `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
+      `redirect_uri=${location.origin}&` +
+      `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
   }
+
+  if (location.hash.length !== 0) {
+    localStorage.setItem("token", location.hash.substring(10).split("&")[0]);
+  }
+
+  if (!getToken()) {
+    signIn();
+  } else {
+    socket.emit("auth", getToken());
+  }
+
 
   function initGame() {
     document.getElementById("pregame").style = "display: none";
@@ -181,20 +196,20 @@
     document.getElementById("state").innerText = status;
   }
 
-  setInterval(()=>{
+  setInterval(() => {
     const votestate = document.getElementById("votestate");
-    if(nextVoteTimestamp === 0){
+    if (nextVoteTimestamp === 0) {
       return;
     }
-    let timeDelta = Math.floor((nextVoteTimestamp-new Date().getTime())/1000);
+    let timeDelta = Math.floor((nextVoteTimestamp - new Date().getTime()) / 1000);
 
     let text = `${timeDelta} seconds until voting closes. `;
-    if(timeDelta < 0){
+    if (timeDelta < 0) {
       text = "Voting has ended";
     }
-    if(game.turn() !== role[0]){
+    if (game.turn() !== role[0]) {
       text += "You cannot vote or have already voted.";
-    }else{
+    } else {
       text += "You have not voted.";
     }
     votestate.innerText = text;

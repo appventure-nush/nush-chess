@@ -4,6 +4,7 @@ import bodyParser from "body-parser";
 import path from "path";
 import http from "http";
 import {Chess} from "chess.js";
+import verifyToken from "./tokens";
 
 const app = express();
 
@@ -73,25 +74,48 @@ io.on("connection", (socket) => {
     reset();
   })
 
-  socket.on("role", (role) => {
-    if (!["white", "black"].includes(role)) {
-      return socket.emit("error", "invalid role");
-    }
-    socket.data.role = role;
-    console.log(socket.id, role);
-    if (socket.data.role === "white") {
-      whites += 1;
-    } else if (socket.data.role === "black") {
-      blacks += 1;
-    }
 
-    if (votes == null) {
-      // new game
-      newVote();
+  socket.on("auth", async (token) => {
+    try {
+      const decodedToken = (await verifyToken(token)) as {
+        // eslint-disable-next-line camelcase
+        unique_name: string
+        name: string
+      } | null;
+      if (decodedToken == null) {
+        socket.emit("error", "Invalid token");
+        return;
+      }
+
+      const sockets = await io.fetchSockets();
+      if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
+        return socket.emit("error", "You have already joined");
+      }
+
+      socket.data.email = decodedToken.unique_name;
+      socket.data.username = decodedToken.name;
+
+      // TODO: switch roles after each game
+      if (socket.data.username.toLowerCase().charCodeAt(0) <= "n".charCodeAt(0)) {
+        socket.data.role = "black";
+        blacks += 1;
+      } else {
+        socket.data.role = "white";
+        whites += 1;
+      }
+      if (votes == null) {
+        // new game
+        newVote();
+      }
+      socket.emit("join_info", {role: socket.data.role, blacks, whites});
+      if (blacks > 0 && whites > 0) {
+        socket.emit("state", {fen: game.fen(), nextVoteTime});
+        const players = game.turn() === 'w' ? whites : blacks;
+        io.emit("voting_update", {numVotes: 0, players});
+      }
+    } catch (e: any) {
+      socket.emit("error", e);
     }
-    socket.emit("state", {fen: game.fen(), nextVoteTime});
-    const players = game.turn() === 'w' ? whites : blacks;
-    io.emit("voting_update", {numVotes: 0, players})
   })
 
   socket.on("disconnect", () => {
@@ -144,7 +168,7 @@ function tallyVotes() {
   newVote();
   io.emit("state", {fen: game.fen(), nextVoteTime});
   io.emit("votes", sorted);
-  if(game.isCheckmate()){
+  if (game.isCheckmate()) {
     // TODO: Start new game
     if (votingTimeout != null) {
       clearTimeout(votingTimeout);
