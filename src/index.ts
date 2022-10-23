@@ -96,20 +96,20 @@ io.on("connection", (socket) => {
       socket.data.username = decodedToken.name;
 
       // TODO: switch roles after each game
-      if (socket.data.username.toLowerCase().charCodeAt(0) <= "n".charCodeAt(0)) {
+      if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
         socket.data.role = "black";
         blacks += 1;
       } else {
         socket.data.role = "white";
         whites += 1;
       }
-      if (votes == null) {
-        // new game
-        newVote();
-      }
       socket.emit("join_info", {role: socket.data.role, blacks, whites});
       if (blacks > 0 && whites > 0) {
         socket.emit("state", {fen: game.fen(), nextVoteTime});
+        if (votes == null) {
+          // new game
+          newVote();
+        }
         const players = game.turn() === 'w' ? whites : blacks;
         io.emit("voting_update", {numVotes: 0, players});
       }
