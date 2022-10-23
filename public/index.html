@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sussy chess game</title>
+    <title>NUSH Chess</title>
     <!-- TODO: use vue -->
     <link rel="stylesheet"
           href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css"
@@ -57,8 +57,9 @@
   socket.on("join_info", ({role: _role, blacks, whites}) => {
     role = _role;
     if(blacks === 0 || whites === 0){
-      document.getElementById("pregame").innerText = "Waiting for more players to join";
+      document.getElementById("pregame").innerText = "Waiting for more players to join. ";
     }
+    document.getElementById("pregame").innerText += `You're playing as ${role}.`;
   })
 
   socket.on("votes", (votes) => {
@@ -103,6 +104,7 @@
 
   if (location.hash.length !== 0) {
     localStorage.setItem("token", location.hash.substring(10).split("&")[0]);
+    location.hash = "";
   }
 
   if (!getToken()) {

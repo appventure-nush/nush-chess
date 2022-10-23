@@ -28,6 +28,7 @@ let nextVoteTime: number = 0;
 let votingRounds = 0;
 
 const votingTimeoutSeconds = 60;
+const numRequiredPlayers = 2;
 
 let blacks = 0;
 let whites = 0;
@@ -104,7 +105,7 @@ io.on("connection", (socket) => {
         whites += 1;
       }
       socket.emit("join_info", {role: socket.data.role, blacks, whites});
-      if (blacks > 0 && whites > 0) {
+      if (blacks > numRequiredPlayers && whites > numRequiredPlayers) {
         socket.emit("state", {fen: game.fen(), nextVoteTime});
         if (votes == null) {
           // new game
