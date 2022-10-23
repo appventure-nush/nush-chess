@@ -1,0 +1,6 @@
+{
+  "votingTimeoutSeconds": 60,
+  "votingThreshold": 1,
+  "numRequiredPlayers": 1,
+  "allowRoleOverride": true
+}

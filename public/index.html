@@ -54,12 +54,14 @@
     updateStatus();
   })
 
-  socket.on("join_info", ({role: _role, blacks, whites}) => {
+  socket.on("gameInfo", ({role: _role, playersPerGroup, gameStatus}) => {
     role = _role;
-    if(blacks === 0 || whites === 0){
+    if(gameStatus === "waiting"){
       document.getElementById("pregame").innerText = "Waiting for more players to join. ";
+    }else{
+      initGame();
+      document.getElementById("role").innerText = `You're playing as ${role}`;
     }
-    document.getElementById("pregame").innerText += `You're playing as ${role}.`;
   })
 
   socket.on("votes", (votes) => {
@@ -67,7 +69,7 @@
     document.getElementById("votes").innerText = formatVotes(votes);
   })
 
-  socket.on("voting_update", ({numVotes, players}) => {
+  socket.on("votingUpdate", ({numVotes, players}) => {
     document.getElementById("votes").innerText = `${numVotes} players out of ${players} players have voted.`
   })
 
@@ -76,9 +78,6 @@
     document.getElementById("error").innerText = error;
   })
 
-  function reset() {
-    socket.emit("reset");
-  }
 
   // votes should be sorted
   function formatVotes(votes) {
@@ -124,7 +123,7 @@
       onDrop: onDrop,
       onSnapEnd: onSnapEnd,
       pieceTheme: "https://chessboardjs.com/img/chesspieces/alpha/{piece}.png",
-      orientation: role,
+      orientation: role == 'w' ? "white" : "black",
     }
     board = Chessboard('board1', config)
   }

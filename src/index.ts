@@ -1,10 +1,20 @@
-import {Server} from "socket.io";
-import express, {Application, NextFunction} from 'express';
+import {Server, Socket} from "socket.io";
+import express from 'express';
 import bodyParser from "body-parser";
 import path from "path";
 import http from "http";
 import {Chess} from "chess.js";
 import verifyToken from "./tokens";
+import * as fs from "fs";
+import {
+  ClientToServerEvents,
+  GameStatus,
+  Group,
+  InterServerEvents,
+  Role,
+  ServerToClientEvents,
+  SocketData
+} from "./types";
 
 const app = express();
 
@@ -18,8 +28,6 @@ app.get('/', (req: express.Request, res: express.Response) => {
 
 const server = http.createServer(app);
 
-const io = new Server(server);
-
 const game = new Chess();
 
 let votes: Map<string, number> | null = null;
@@ -27,21 +35,57 @@ let votingTimeout: NodeJS.Timeout | null = null;
 let nextVoteTime: number = 0;
 let votingRounds = 0;
 
-const votingTimeoutSeconds = 60;
-const numRequiredPlayers = 2;
+const {
+  votingTimeoutSeconds,
+  numRequiredPlayers,
+  votingThreshold,
+  allowRoleOverride
+} = JSON.parse(fs.readFileSync("./config.json", "ascii"))
 
-let blacks = 0;
-let whites = 0;
+// Groups start from 1
+const playersPerGroup = [-1, 0, 0];
+const winsPerGroup = [-1, 0, 0];
+
+let currentGroupOne: Role = "w";
+let gameStatus: GameStatus = "waiting";
+
+function getRoleFromGroup(group: Group): Role | false {
+  if (group == 1) {
+    return currentGroupOne;
+  } else if (group == 2) {
+    if (currentGroupOne == "w") {
+      return "b";
+    } else {
+      return "w";
+    }
+  }
+  return false;
+}
+
+function getGroupFromRole(role: Role): Group {
+  if (role == currentGroupOne) {
+    return 1;
+  }
+  return 2;
+}
+
+
+const io = new Server<ClientToServerEvents,
+  ServerToClientEvents,
+  InterServerEvents,
+  SocketData>(server);
 
 io.on("connection", (socket) => {
-  console.log("New connection", socket.id)
-
-  socket.on("vote", (move) => {
-    if (!socket.data.role) {
-      socket.emit("error", "Select a role first");
+  socket.on("vote", async (move) => {
+    if (gameStatus != "playing") {
+      socket.emit("error", "The game is not in play");
       return;
     }
-    if (game.turn() != socket.data.role[0]) {
+    if (!socket.data.group) {
+      socket.emit("error", "You are not authenticated");
+      return;
+    }
+    if (game.turn() != getRoleFromGroup(socket.data.group)) {
       socket.emit("error", "Not your turn");
       return;
     }
@@ -62,19 +106,15 @@ io.on("connection", (socket) => {
     }
 
     const numVotes = sum(Array.from(votes.values()));
-    const players = game.turn() === 'w' ? whites : blacks;
+    const players = playersPerGroup[getGroupFromRole(game.turn())];
 
-    io.emit("voting_update", {numVotes, players})
+    sendVotingUpdate();
 
-    if (numVotes == players) {
-      tallyVotes();
+    // Number of votes have passed threshold
+    if (players > 0 && numVotes / players >= votingThreshold) {
+      await tallyVotes();
     }
   })
-
-  socket.on("reset", () => {
-    reset();
-  })
-
 
   socket.on("auth", async (token) => {
     try {
@@ -89,42 +129,50 @@ io.on("connection", (socket) => {
       }
 
       const sockets = await io.fetchSockets();
-      if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
-        return socket.emit("error", "You have already joined");
-      }
+      // if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
+      //   return socket.emit("error", "You have already joined");
+      // }
 
       socket.data.email = decodedToken.unique_name;
       socket.data.username = decodedToken.name;
 
-      // TODO: switch roles after each game
-      if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
-        socket.data.role = "black";
-        blacks += 1;
-      } else {
-        socket.data.role = "white";
-        whites += 1;
-      }
-      socket.emit("join_info", {role: socket.data.role, blacks, whites});
-      if (blacks > numRequiredPlayers && whites > numRequiredPlayers) {
-        socket.emit("state", {fen: game.fen(), nextVoteTime});
-        if (votes == null) {
-          // new game
-          newVote();
+
+      // if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
+      //   socket.data.group = 1;
+      // } else {
+      //   socket.data.group = 2;
+      // }
+
+      socket.data.group = Math.random() > 0.5 ? 2 : 1;
+
+      playersPerGroup[socket.data.group] += 1;
+
+      console.log(Math.min(playersPerGroup[1], playersPerGroup[2]), gameStatus);
+      if (gameStatus == 'waiting') {
+        // Game is not in play and minimum players are satisfied
+        if (Math.min(playersPerGroup[1], playersPerGroup[2]) >= numRequiredPlayers) {
+          await reset();
         }
-        const players = game.turn() === 'w' ? whites : blacks;
-        io.emit("voting_update", {numVotes: 0, players});
+      } else {
+        socket.emit("state", {fen: game.fen(), nextVoteTime});
+        sendVotingUpdate();
       }
+      socket.emit("gameInfo", {
+        gameStatus,
+        role: getRoleFromGroup(socket.data.group),
+        group: socket.data.group,
+        playersPerGroup, winsPerGroup
+      });
     } catch (e: any) {
       socket.emit("error", e);
     }
   })
 
   socket.on("disconnect", () => {
-    if (socket.data.role === "white") {
-      whites -= 1;
-    } else if (socket.data.role === "black") {
-      blacks -= 1;
+    if (!socket.data.group) {
+      return
     }
+    playersPerGroup[socket.data.group] -= 1;
   })
 })
 
@@ -136,16 +184,25 @@ function sum(arr: number[]) {
   return res;
 }
 
-function reset() {
+async function reset() {
+  gameStatus = "playing";
+  if (votingTimeout != null) {
+    clearTimeout(votingTimeout);
+  }
+  if(currentGroupOne == "w"){
+    currentGroupOne = "b";
+  }else{
+    currentGroupOne = "w";
+  }
   votingRounds = 0;
   game.reset()
-  votes = null;
-  io.emit("reset");
   newVote();
+  await sendGameInfoToAll();
   io.emit("state", {fen: game.fen(), nextVoteTime});
+
 }
 
-function tallyVotes() {
+async function tallyVotes() {
   if (votes == null) {
     return;
   }
@@ -165,20 +222,43 @@ function tallyVotes() {
     return;
   }
 
+  const currentGroup = getGroupFromRole(game.turn());
   game.move(sorted[0][0]);
   newVote();
   io.emit("state", {fen: game.fen(), nextVoteTime});
   io.emit("votes", sorted);
   if (game.isCheckmate()) {
-    // TODO: Start new game
-    if (votingTimeout != null) {
-      clearTimeout(votingTimeout);
-    }
+    io.emit("winner", currentGroup);
+    winsPerGroup[currentGroup] += 1;
+    await sendGameInfoToAll();
+    reset();
     return;
   }
-  const players = game.turn() === 'w' ? whites : blacks;
+  sendVotingUpdate();
+}
 
-  io.emit("voting_update", {numVotes: 0, players})
+function sendVotingUpdate() {
+  if (votes == null) {
+    return
+  }
+  const numVotes = sum(Array.from(votes.values()));
+  const players = playersPerGroup[getGroupFromRole(game.turn())];
+
+  io.emit("votingUpdate", {numVotes, players})
+}
+
+async function sendGameInfoToAll() {
+  const sockets = await io.sockets.fetchSockets();
+  for (const socket of sockets) {
+    if (socket.data.group) {
+      socket.emit("gameInfo", {
+        gameStatus,
+        role: getRoleFromGroup(socket.data.group),
+        group: socket.data.group,
+        playersPerGroup, winsPerGroup
+      });
+    }
+  }
 }
 
 function newVote() {
