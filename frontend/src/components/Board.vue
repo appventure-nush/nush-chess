@@ -5,7 +5,7 @@
 </template>
 
 <script>
-import ChessBoard from "chessboardjs-vue";
+import "../chessboard.js";
 import { ref } from "vue";
 
 export default {

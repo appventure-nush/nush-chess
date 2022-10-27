@@ -1,7 +1,6 @@
 import {Server, Socket} from "socket.io";
 import express from 'express';
 import bodyParser from "body-parser";
-import path from "path";
 import http from "http";
 import {Chess} from "chess.js";
 import verifyToken from "./tokens";
@@ -21,10 +20,6 @@ const app = express();
 // Body-parser
 app.use(bodyParser.urlencoded({extended: false}));
 app.use(bodyParser.json());
-
-app.get('/', (req: express.Request, res: express.Response) => {
-  res.sendFile(path.join(__dirname, "../public/index.html"));
-});
 
 const server = http.createServer(app);
 
@@ -157,7 +152,7 @@ io.on("connection", (socket) => {
       if (gameStatus == 'waiting') {
         // Game is not in play and minimum players are satisfied
         if (Math.min(playersPerGroup[1], playersPerGroup[2]) >= numRequiredPlayers) {
-          await reset();
+          await reset(false);
         }
       } else {
         sendVotingUpdate();
@@ -168,7 +163,7 @@ io.on("connection", (socket) => {
         group: socket.data.group,
         playersPerGroup, winsPerGroup
       });
-      if(gameStatus == "playing"){
+      if (gameStatus == "playing") {
         socket.emit("state", {fen: game.fen(), nextVoteTime});
       }
     } catch (e: any) {
@@ -192,15 +187,17 @@ function sum(arr: number[]) {
   return res;
 }
 
-async function reset() {
+async function reset(switchTeams=true) {
   gameStatus = "playing";
   if (votingTimeout != null) {
     clearTimeout(votingTimeout);
   }
-  if (currentGroupOne == "w") {
-    currentGroupOne = "b";
-  } else {
-    currentGroupOne = "w";
+  if(switchTeams){
+    if (currentGroupOne == "w") {
+      currentGroupOne = "b";
+    } else {
+      currentGroupOne = "w";
+    }
   }
   votingRounds = 0;
   game.reset()
@@ -282,6 +279,7 @@ function newVote() {
   nextVoteTime = new Date().getTime() + 1000 * votingTimeoutSeconds;
 }
 
+app.use(express.static('../frontend/dist'))
 
 server.listen(3001, () => {
   console.log('listening on *:3001');
