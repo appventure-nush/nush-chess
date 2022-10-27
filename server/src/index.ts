@@ -34,6 +34,7 @@ const {
   votingTimeoutSeconds,
   numRequiredPlayers,
   votingThreshold,
+  intergameDelaySeconds,
   allowRoleOverride
 } = JSON.parse(fs.readFileSync("./config.json", "ascii"))
 
@@ -226,8 +227,9 @@ async function tallyVotes() {
     if (Math.min(...playersPerGroup) == 0) {
       gameStatus = "waiting";
     } else {
-      reset();
+      resetAfterDelay();
     }
+    await sendGameInfoToAll();
     return;
   }
 
@@ -239,11 +241,16 @@ async function tallyVotes() {
   if (game.isCheckmate()) {
     io.emit("winner", currentGroup);
     winsPerGroup[currentGroup] += 1;
+    resetAfterDelay();
     await sendGameInfoToAll();
-    reset();
     return;
   }
   sendVotingUpdate();
+}
+
+function resetAfterDelay(){
+  gameStatus = "waiting";
+  setTimeout(reset, intergameDelaySeconds*1000);
 }
 
 function sendVotingUpdate() {

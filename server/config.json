@@ -2,5 +2,6 @@
   "votingTimeoutSeconds": 60,
   "votingThreshold": 1,
   "numRequiredPlayers": 1,
+  "intergameDelaySeconds": 60,
   "allowRoleOverride": true
 }
