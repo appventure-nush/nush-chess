@@ -196,11 +196,17 @@ export default {
 
     socket.on(
       "gameInfo",
-      ({ role: _role, playersPerGroup, gameStatus, group }) => {
+      ({ role: _role, playersPerGroup, gameStatus, waitingReason, group }) => {
         app.state.role = _role;
         app.state.group = group;
         if (gameStatus === "waiting") {
-          this.state.status = "waiting";
+          if(waitingReason === "noVotes"){
+            this.state.status = "Voting timeout elapsed with no votes. Restarting game.";
+          }else if(waitingReason === "noPlayers"){
+            this.state.status = "Waiting for more players to join.";
+          }else if(waitingReason === "gameCompleted"){
+            console.log(this.state.status);
+          }
         } else {
           app.initGame();
         }

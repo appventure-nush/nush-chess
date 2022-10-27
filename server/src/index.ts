@@ -12,7 +12,7 @@ import {
   InterServerEvents,
   Role,
   ServerToClientEvents,
-  SocketData
+  SocketData, WaitingReason
 } from "./types";
 
 const app = express();
@@ -44,6 +44,7 @@ const winsPerGroup = [1, 0, 0];
 
 let currentGroupOne: Role = "w";
 let gameStatus: GameStatus = "waiting";
+let waitingReason: WaitingReason = "noPlayers";
 
 function getRoleFromGroup(group: Group): Role | false {
   if (group == 1) {
@@ -110,11 +111,11 @@ io.on("connection", (socket) => {
     const numVotes = sum(Array.from(votes.values()));
     const players = playersPerGroup[getGroupFromRole(game.turn())];
 
-    sendVotingUpdate();
-
     // Number of votes have passed threshold
     if (players > 0 && numVotes / players >= votingThreshold) {
       await tallyVotes();
+    }else{
+      sendVotingUpdate();
     }
   })
 
@@ -160,6 +161,7 @@ io.on("connection", (socket) => {
       }
       socket.emit("gameInfo", {
         gameStatus,
+        waitingReason,
         role: getRoleFromGroup(socket.data.group),
         group: socket.data.group,
         playersPerGroup, winsPerGroup
@@ -190,6 +192,7 @@ function sum(arr: number[]) {
 
 async function reset(switchTeams=true) {
   gameStatus = "playing";
+  waitingReason = "";
   if (votingTimeout != null) {
     clearTimeout(votingTimeout);
   }
@@ -224,9 +227,11 @@ async function tallyVotes() {
   if (sorted.length == 0) {
     // :skull:
     io.emit("error", "No votes!");
+    gameStatus = "waiting";
     if (Math.min(...playersPerGroup) == 0) {
-      gameStatus = "waiting";
+      waitingReason = "noPlayers";
     } else {
+      waitingReason = "noVotes";
       resetAfterDelay();
     }
     await sendGameInfoToAll();
@@ -241,15 +246,15 @@ async function tallyVotes() {
   if (game.isCheckmate()) {
     io.emit("winner", currentGroup);
     winsPerGroup[currentGroup] += 1;
+    gameStatus = "waiting";
+    waitingReason = "gameCompleted";
     resetAfterDelay();
     await sendGameInfoToAll();
     return;
   }
-  sendVotingUpdate();
 }
 
 function resetAfterDelay(){
-  gameStatus = "waiting";
   setTimeout(reset, intergameDelaySeconds*1000);
 }
 
@@ -269,6 +274,7 @@ async function sendGameInfoToAll() {
     if (socket.data.group) {
       socket.emit("gameInfo", {
         gameStatus,
+        waitingReason,
         role: getRoleFromGroup(socket.data.group),
         group: socket.data.group,
         playersPerGroup, winsPerGroup
@@ -284,6 +290,7 @@ function newVote() {
   }
   votingTimeout = setTimeout(tallyVotes, 1000 * votingTimeoutSeconds);
   nextVoteTime = new Date().getTime() + 1000 * votingTimeoutSeconds;
+  sendVotingUpdate();
 }
 
 app.use(express.static('../frontend/dist'))
