@@ -43,8 +43,8 @@ const {
 } = JSON.parse(fs.readFileSync("./config.json", "ascii"))
 
 // Groups start from 1
-const playersPerGroup = [-1, 0, 0];
-const winsPerGroup = [-1, 0, 0];
+const playersPerGroup = [1, 0, 0];
+const winsPerGroup = [1, 0, 0];
 
 let currentGroupOne: Role = "w";
 let gameStatus: GameStatus = "waiting";
@@ -218,7 +218,11 @@ async function tallyVotes() {
   if (sorted.length == 0) {
     // :skull:
     io.emit("error", "No votes!");
-    reset();
+    if(Math.min(...playersPerGroup) == 0){
+      gameStatus = "waiting";
+    }else{
+      reset();
+    }
     return;
   }
 
