@@ -73,7 +73,13 @@ function getGroupFromRole(role: Role): Group {
 const io = new Server<ClientToServerEvents,
   ServerToClientEvents,
   InterServerEvents,
-  SocketData>(server);
+  SocketData>(server, {
+  cors: {
+    origin: "http://localhost:5137",
+    methods: ["GET", "POST"]
+  },
+  transports: ["websocket"]
+});
 
 io.on("connection", (socket) => {
   socket.on("vote", async (move) => {
@@ -154,7 +160,6 @@ io.on("connection", (socket) => {
           await reset();
         }
       } else {
-        socket.emit("state", {fen: game.fen(), nextVoteTime});
         sendVotingUpdate();
       }
       socket.emit("gameInfo", {
@@ -163,6 +168,9 @@ io.on("connection", (socket) => {
         group: socket.data.group,
         playersPerGroup, winsPerGroup
       });
+      if(gameStatus == "playing"){
+        socket.emit("state", {fen: game.fen(), nextVoteTime});
+      }
     } catch (e: any) {
       socket.emit("error", e);
     }
@@ -189,9 +197,9 @@ async function reset() {
   if (votingTimeout != null) {
     clearTimeout(votingTimeout);
   }
-  if(currentGroupOne == "w"){
+  if (currentGroupOne == "w") {
     currentGroupOne = "b";
-  }else{
+  } else {
     currentGroupOne = "w";
   }
   votingRounds = 0;
@@ -218,9 +226,9 @@ async function tallyVotes() {
   if (sorted.length == 0) {
     // :skull:
     io.emit("error", "No votes!");
-    if(Math.min(...playersPerGroup) == 0){
+    if (Math.min(...playersPerGroup) == 0) {
       gameStatus = "waiting";
-    }else{
+    } else {
       reset();
     }
     return;
@@ -275,6 +283,6 @@ function newVote() {
 }
 
 
-server.listen(3000, () => {
-  console.log('listening on *:3000');
+server.listen(3001, () => {
+  console.log('listening on *:3001');
 });

@@ -1,0 +1,21 @@
+import { defineConfig } from "vite";
+import vue from "@vitejs/plugin-vue";
+import { esbuildCommonjs } from "@originjs/vite-plugin-commonjs";
+
+// https://vitejs.dev/config/
+export default defineConfig({
+    plugins: [vue()],
+    define: {
+        global: {},
+    },
+    optimizeDeps: {
+        esbuildOptions: {
+            plugins: [esbuildCommonjs(["chessboardjs-vue"])],
+        },
+    },
+    build: {
+        commonjsOptions: {
+            transformMixedEsModules: true,
+        },
+    },
+});

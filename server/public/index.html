@@ -40,7 +40,7 @@
 </div>
 <script>
 
-  const socket = io();
+  const socket = io({transports: ["websocket"]});
   let role = "";
   let nextVoteTimestamp = 0;
   var game = new Chess();
