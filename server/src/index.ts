@@ -178,6 +178,7 @@ io.on("connection", (socket) => {
     if (!socket.data.group) {
       return
     }
+    console.log("Disconnected");
     playersPerGroup[socket.data.group] -= 1;
   })
 })
@@ -208,7 +209,6 @@ async function reset(switchTeams=true) {
   newVote();
   await sendGameInfoToAll();
   io.emit("state", {fen: game.fen(), nextVoteTime});
-
 }
 
 async function tallyVotes() {
