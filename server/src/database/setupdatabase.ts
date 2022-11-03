@@ -42,6 +42,10 @@ CREATE TABLE IF NOT EXISTS game_moves
 `
 
 async function setupDatabase() {
+  if(connection == null){
+    console.log("Not connected to database, skipping setup");
+    return;
+  }
   console.log('start database set up');
   await connection.query(createGameTable);
   await connection.query(createVotesTable);

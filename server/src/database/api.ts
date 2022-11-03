@@ -2,6 +2,9 @@ import {Group} from "../types";
 import connection from "./database";
 
 export async function newGame(whiteTeam: Group) {
+  if (connection == null) {
+    return -1;
+  }
   const query = `insert into games
                      (white_team, winner, timeout)
                  values ($1, -1, false)
@@ -12,6 +15,9 @@ export async function newGame(whiteTeam: Group) {
 }
 
 export async function completeGame(gameId: number, winner: Group, timeout: boolean) {
+  if (connection == null) {
+    return;
+  }
   const query = `update games
                  set winner  = $1,
                      timeout = $2
@@ -21,6 +27,9 @@ export async function completeGame(gameId: number, winner: Group, timeout: boole
 }
 
 export async function registerVote(gameId: number, votingRound: number, playerEmail: string, vote: string) {
+  if (connection == null) {
+    return;
+  }
   const query = `insert into votes
                      (game_id, voting_round, email, vote)
                  values ($1, $2, $3, $4)`;
@@ -33,6 +42,9 @@ export async function registerVotingResults(gameId: number,
                                             move: string,
                                             votesFor: number,
                                             totalVotes: number) {
+  if (connection == null) {
+    return;
+  }
   const query = `insert into game_moves
                      (game_id, voting_round, move, votes_for, total_votes)
                  values ($1, $2, $3, $4, $5)`;
@@ -41,6 +53,9 @@ export async function registerVotingResults(gameId: number,
 }
 
 export async function winStats() {
+  if (connection == null) {
+    return [0, 0, 0];
+  }
   const query = `select count(winner), winner
                  from games
                  where winner != -1
@@ -54,6 +69,13 @@ export async function winStats() {
 }
 
 export async function playerStats(email: string, group: Group) {
+  if (connection == null) {
+    return {
+      numVotes: 0,
+      numAccepted: 0,
+      numWinning: 0,
+    };
+  }
   const query = `with data as (select votes.id, votes.vote, gm.move, g.winner
                                from votes
                                         inner join game_moves gm
