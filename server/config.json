@@ -3,5 +3,9 @@
   "votingThreshold": 1,
   "numRequiredPlayers": 1,
   "intergameDelaySeconds": 60,
-  "allowRoleOverride": true
+  "allowRoleOverride": true,
+  "host": "localhost",
+  "user": "chess",
+  "password": "chess",
+  "database": "chess"
 }

@@ -201,7 +201,8 @@ export default {
           app.state.votes = [];
           if (gameStatus === "waiting") {
             if (waitingReason === "noVotes") {
-              this.state.status = "Voting timeout elapsed with no votes. Restarting game.";
+              // NO need to do anything here
+              // Handled by winner event
             } else if (waitingReason === "noPlayers") {
               this.state.status = "Waiting for more players to join.";
             } else if (waitingReason === "gameCompleted") {
@@ -216,6 +217,14 @@ export default {
     socket.on("votes", (votes) => {
       console.log(votes);
       app.state.votes = votes;
+    });
+
+    socket.on("winner", ({winnerGroup, timeout}) => {
+      if(timeout){
+        app.state.status = `Group ${winnerGroup} won because the other group did not vote.`;
+      }else{
+        app.state.status = `Group ${winnerGroup} won.`;
+      }
     });
 
     socket.on("votingUpdate", ({numVotes, players}) => {

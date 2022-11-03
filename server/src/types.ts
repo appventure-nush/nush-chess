@@ -7,7 +7,7 @@ export interface ServerToClientEvents {
   error: (error: string) => void;
   state: (data: { fen: string, nextVoteTime: number }) => void;
   votes: (votes: [string, number][]) => void;
-  winner: (winnerGroup: number) => void;
+  winner: (data: { winnerGroup: number, timeout: boolean }) => void;
   votingUpdate: (data: { numVotes: number, players: number }) => void;
   gameInfo: (data: {
     gameStatus: GameStatus, waitingReason: WaitingReason, role: Role | false, group: Group, playersPerGroup: number[], winsPerGroup: number[]

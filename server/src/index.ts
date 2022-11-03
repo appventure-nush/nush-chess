@@ -14,6 +14,8 @@ import {
   ServerToClientEvents,
   SocketData, WaitingReason
 } from "./types";
+import setupDatabase from "./database/setupdatabase";
+import {completeGame, newGame, registerVote} from "./database/api";
 
 const app = express();
 
@@ -24,6 +26,7 @@ app.use(bodyParser.json());
 const server = http.createServer(app);
 
 const game = new Chess();
+let gameId = -1;
 
 let votes: Map<string, number> | null = null;
 let votingTimeout: NodeJS.Timeout | null = null;
@@ -66,6 +69,10 @@ function getGroupFromRole(role: Role): Group {
   return 2;
 }
 
+function otherGroup(group: Group): Group{
+  if(group == 1) return 2;
+  return 1;
+}
 
 const io = new Server<ClientToServerEvents,
   ServerToClientEvents,
@@ -84,7 +91,7 @@ io.on("connection", (socket) => {
       socket.emit("error", "The game is not in play");
       return;
     }
-    if (!socket.data.group) {
+    if (!socket.data.group || !socket.data.email) {
       socket.emit("error", "You are not authenticated");
       return;
     }
@@ -107,6 +114,8 @@ io.on("connection", (socket) => {
     } else {
       votes.set(move, 1);
     }
+
+    await registerVote(gameId, socket.data.email, move);
 
     const numVotes = sum(Array.from(votes.values()));
     const players = playersPerGroup[getGroupFromRole(game.turn())];
@@ -204,6 +213,9 @@ async function reset(switchTeams=true) {
       currentGroupOne = "w";
     }
   }
+  console.log("Starting new game...");
+  gameId = await newGame(getGroupFromRole("w"));
+  console.log(gameId);
   votingRounds = 0;
   game.reset()
   newVote();
@@ -224,6 +236,8 @@ async function tallyVotes() {
     return bNum - aNum;
   }).slice(0, 10);
 
+  const currentGroup = getGroupFromRole(game.turn());
+
   if (sorted.length == 0) {
     // :skull:
     io.emit("error", "No votes!");
@@ -234,22 +248,27 @@ async function tallyVotes() {
       waitingReason = "noVotes";
       resetAfterDelay();
     }
+    io.emit("winner", {winnerGroup: otherGroup(currentGroup), timeout: true});
+    winsPerGroup[otherGroup(currentGroup)] += 1;
     await sendGameInfoToAll();
+    await completeGame(gameId, otherGroup(currentGroup), true);
+    gameId = -1;
     return;
   }
 
-  const currentGroup = getGroupFromRole(game.turn());
   game.move(sorted[0][0]);
   newVote();
   io.emit("state", {fen: game.fen(), nextVoteTime});
   io.emit("votes", sorted);
   if (game.isCheckmate()) {
-    io.emit("winner", currentGroup);
+    io.emit("winner", {winnerGroup: currentGroup, timeout: false});
     winsPerGroup[currentGroup] += 1;
     gameStatus = "waiting";
     waitingReason = "gameCompleted";
     resetAfterDelay();
     await sendGameInfoToAll();
+    await completeGame(gameId, currentGroup, false);
+    gameId = -1;
     return;
   }
 }
@@ -294,6 +313,8 @@ function newVote() {
 }
 
 app.use(express.static('../frontend/dist'))
+
+setupDatabase();
 
 server.listen(3001, () => {
   console.log('listening on *:3001');
