@@ -15,7 +15,7 @@ import {
   SocketData, WaitingReason
 } from "./types";
 import setupDatabase from "./database/setupdatabase";
-import {completeGame, newGame, registerVote} from "./database/api";
+import {completeGame, newGame, playerStats, registerVote, registerVotingResults, winStats} from "./database/api";
 
 const app = express();
 
@@ -43,7 +43,7 @@ const {
 
 // Groups start from 1
 const playersPerGroup = [1, 0, 0];
-const winsPerGroup = [1, 0, 0];
+let winsPerGroup = [1, 0, 0];
 
 let currentGroupOne: Role = "w";
 let gameStatus: GameStatus = "waiting";
@@ -69,8 +69,8 @@ function getGroupFromRole(role: Role): Group {
   return 2;
 }
 
-function otherGroup(group: Group): Group{
-  if(group == 1) return 2;
+function otherGroup(group: Group): Group {
+  if (group == 1) return 2;
   return 1;
 }
 
@@ -115,7 +115,7 @@ io.on("connection", (socket) => {
       votes.set(move, 1);
     }
 
-    await registerVote(gameId, socket.data.email, move);
+    await registerVote(gameId, votingRounds, socket.data.email, move);
 
     const numVotes = sum(Array.from(votes.values()));
     const players = playersPerGroup[getGroupFromRole(game.turn())];
@@ -123,7 +123,7 @@ io.on("connection", (socket) => {
     // Number of votes have passed threshold
     if (players > 0 && numVotes / players >= votingThreshold) {
       await tallyVotes();
-    }else{
+    } else {
       sendVotingUpdate();
     }
   })
@@ -183,6 +183,16 @@ io.on("connection", (socket) => {
     }
   })
 
+  socket.on("playerStats", (callback) => {
+    if (!socket.data.group || !socket.data.email) {
+      socket.emit("error", "unauth");
+      return;
+    }
+    playerStats(socket.data.email, socket.data.group).then(data => {
+      callback(data);
+    })
+  })
+
   socket.on("disconnect", () => {
     if (!socket.data.group) {
       return
@@ -200,22 +210,20 @@ function sum(arr: number[]) {
   return res;
 }
 
-async function reset(switchTeams=true) {
+async function reset(switchTeams = true) {
   gameStatus = "playing";
   waitingReason = "";
   if (votingTimeout != null) {
     clearTimeout(votingTimeout);
   }
-  if(switchTeams){
+  if (switchTeams) {
     if (currentGroupOne == "w") {
       currentGroupOne = "b";
     } else {
       currentGroupOne = "w";
     }
   }
-  console.log("Starting new game...");
   gameId = await newGame(getGroupFromRole("w"));
-  console.log(gameId);
   votingRounds = 0;
   game.reset()
   newVote();
@@ -229,7 +237,6 @@ async function tallyVotes() {
   }
   console.log(`Voting round: ${votingRounds}`);
   console.log(votes);
-  votingRounds++;
   const sorted = Array.from(votes.entries()).sort((a, b) => {
     const aNum = a[1];
     const bNum = b[1];
@@ -257,6 +264,9 @@ async function tallyVotes() {
   }
 
   game.move(sorted[0][0]);
+  const totalVotes = sum(Array.from(votes.values()));
+  await registerVotingResults(gameId, votingRounds, sorted[0][0], sorted[0][1], totalVotes);
+  votingRounds++;
   newVote();
   io.emit("state", {fen: game.fen(), nextVoteTime});
   io.emit("votes", sorted);
@@ -273,8 +283,8 @@ async function tallyVotes() {
   }
 }
 
-function resetAfterDelay(){
-  setTimeout(reset, intergameDelaySeconds*1000);
+function resetAfterDelay() {
+  setTimeout(reset, intergameDelaySeconds * 1000);
 }
 
 function sendVotingUpdate() {
@@ -314,7 +324,11 @@ function newVote() {
 
 app.use(express.static('../frontend/dist'))
 
-setupDatabase();
+setupDatabase().then(() => {
+  winStats().then(result => {
+    winsPerGroup = result;
+  })
+});
 
 server.listen(3001, () => {
   console.log('listening on *:3001');

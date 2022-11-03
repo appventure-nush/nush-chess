@@ -17,6 +17,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   vote: (move: string) => void;
   auth: (token: string) => void;
+  playerStats: (callback: (data: { numVotes: number, numAccepted: number, numWinning: number }) => void) => void;
 }
 
 export interface InterServerEvents {

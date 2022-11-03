@@ -65,7 +65,7 @@
         <span> <br/> </span>
         <ol class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full" v-if="state.votes.length">
           <li v-for="vote in state.votes" :key="vote">
-            <span> {{`${vote[0]} (${vote[1]} votes)\n`}}</span>
+            <span> {{ `${vote[0]} (${vote[1]} votes)\n` }}</span>
           </li>
         </ol>
         <span class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full" v-else>No votes.</span>
@@ -211,6 +211,12 @@ export default {
           } else {
             app.initGame();
           }
+
+          // TODO: don't request player stats all the time
+          socket.emit("playerStats", (stats)=>{
+            // TODO: do something with player stats
+            console.log(stats);
+          });
         }
     );
 
@@ -220,9 +226,9 @@ export default {
     });
 
     socket.on("winner", ({winnerGroup, timeout}) => {
-      if(timeout){
+      if (timeout) {
         app.state.status = `Group ${winnerGroup} won because the other group did not vote.`;
-      }else{
+      } else {
         app.state.status = `Group ${winnerGroup} won.`;
       }
     });
@@ -243,9 +249,11 @@ export default {
     }
 
     this.state.auth = localStorage.getItem("token");
-    if (this.state.auth) {
-      socket.emit("auth", this.state.auth);
-    }
+    socket.on("connect", () => {
+      if (this.state.auth) {
+        socket.emit("auth", this.state.auth);
+      }
+    })
   },
 };
 </script>
