@@ -21,5 +21,7 @@ export class ManagedTimer {
     this.timeoutTime = new Date().getTime() + this.timeout;
   }
 
-
+  running() {
+    return this.timeoutTime > new Date().getTime();
+  }
 }

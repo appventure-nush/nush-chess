@@ -10,7 +10,13 @@ export interface ServerToClientEvents {
   winner: (data: { winnerGroup: number, timeout: boolean }) => void;
   votingUpdate: (data: { numVotes: number, players: number }) => void;
   gameInfo: (data: {
-    gameStatus: GameStatus, waitingReason: WaitingReason, role: Role | false, group: Group, playersPerGroup: number[], winsPerGroup: number[]
+    gameStatus: GameStatus,
+    waitingReason: WaitingReason,
+    role: Role | false,
+    group: Group,
+    playersPerGroup: number[],
+    winsPerGroup: number[],
+    nextGameTime: number,
   }) => void;
 }
 

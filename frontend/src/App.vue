@@ -20,8 +20,9 @@
               </span>
             </div>
 
-            <div
-                class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
+            <!--  If game is in play, show voting timeout  -->
+            <div v-if="state.gameStatus === 'playing' "
+                 class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
             >
               <span>Voting window</span> <br/>
 
@@ -38,7 +39,29 @@
                 You have not voted
               </span>
             </div>
-            <div class="outline-none rounded p-4 bg-[#F0D9B5] text-black">
+            <!--  If waiting for game start, show countdown  -->
+            <div v-else-if="state.nextGameTime > 0"
+                 class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
+            >
+              <span>Game starts in</span> <br/>
+              <span class="font-mono text-md">
+                {{
+                  Math.max(
+                      (state.nextGameTime - state.time.getTime()) / 1000,
+                      0
+                  ).toFixed(2)
+                }}s
+              </span>
+            </div>
+            <!--  Waiting for players  -->
+            <div v-else
+                 class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
+            >
+              <span>Waiting for players</span> <br/>
+            </div>
+
+            <div v-if="state.gameStatus === 'playing'"
+                 class="outline-none rounded p-4 bg-[#F0D9B5] text-black">
               <span class="text-xl"> {{ state.numVotes }} votes </span> <br/>
               <span> of {{ state.numPlayers }} players </span>
             </div>
@@ -114,6 +137,9 @@ export default {
       group: 0,
       auth: false,
       status: "",
+      // Either waiting or playing
+      gameStatus: "waiting",
+      nextGameTime: -1,
       role: "",
       fen: "",
       votes: [],
@@ -193,11 +219,13 @@ export default {
 
     socket.on(
         "gameInfo",
-        ({role: _role, playersPerGroup, winsPerGroup, gameStatus, waitingReason, group}) => {
+        ({role: _role, playersPerGroup, winsPerGroup, gameStatus, waitingReason, group, nextGameTime}) => {
           app.state.role = _role;
           app.state.group = group;
           app.state.numWins = winsPerGroup;
           app.state.votes = [];
+          app.state.gameStatus = gameStatus;
+          app.state.nextGameTime = nextGameTime;
           if (gameStatus === "waiting") {
             if (waitingReason === "noVotes") {
               // NO need to do anything here
@@ -212,7 +240,7 @@ export default {
           }
 
           // TODO: don't request player stats all the time
-          socket.emit("playerStats", (stats)=>{
+          socket.emit("playerStats", (stats) => {
             // TODO: do something with player stats
             console.log(stats);
           });

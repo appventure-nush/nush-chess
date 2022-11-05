@@ -1,4 +1,5 @@
-import {Group, Role} from "./types";
+import {GameStatus, Group, Role} from "./types";
+import {ManagedTimer} from "./ManagedTimer";
 
 export function getRoleFromGroup(group: Group, currentGroupOne: Role): Role | false {
   if (group == 1) {
@@ -31,4 +32,14 @@ export function sum(arr: number[]) {
     res += elem;
   }
   return res;
+}
+
+export function nextGameTime(gameStatus: GameStatus, timer: ManagedTimer | null){
+  if(gameStatus == "playing"){
+    return new Date().getTime();
+  }
+  if(!timer || timer.timeoutTime < new Date().getTime()){
+    return -1;
+  }
+  return timer.timeoutTime;
 }

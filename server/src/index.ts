@@ -16,7 +16,7 @@ import {
 } from "./types";
 import setupDatabase from "./database/setupdatabase";
 import {completeGame, newGame, playerStats, registerVote, registerVotingResults, winStats} from "./database/api";
-import {getGroupFromRole, getRoleFromGroup, otherGroup, sum} from "./util";
+import {getGroupFromRole, getRoleFromGroup, nextGameTime, otherGroup, sum} from "./util";
 import {ManagedTimer} from "./ManagedTimer";
 
 const app = express();
@@ -33,6 +33,7 @@ let gameId = -1;
 let votes: Map<string, number> | null = null;
 let votingTimeout: ManagedTimer | null = null;
 let votingRounds = 0;
+let gameResetTimer: ManagedTimer | null = null;
 
 const {
   votingTimeoutSeconds,
@@ -143,7 +144,10 @@ io.on("connection", (socket) => {
       if (gameStatus == 'waiting') {
         // Game is not in play and minimum players are satisfied
         if (Math.min(playersPerGroup[1], playersPerGroup[2]) >= numRequiredPlayers) {
-          await reset(false);
+          if(!gameResetTimer?.running()){
+            await resetAfterDelay(false);
+            await sendGameInfoToAll();
+          }
         }
       } else {
         sendVotingUpdate();
@@ -153,7 +157,8 @@ io.on("connection", (socket) => {
         waitingReason,
         role: getRoleFromGroup(socket.data.group, currentGroupOne),
         group: socket.data.group,
-        playersPerGroup, winsPerGroup
+        playersPerGroup, winsPerGroup,
+        nextGameTime: nextGameTime(gameStatus, gameResetTimer),
       });
       if (gameStatus == "playing" && votingTimeout != null) {
         socket.emit("state", {fen: game.fen(), nextVoteTime: votingTimeout.timeoutTime});
@@ -222,6 +227,7 @@ async function tallyVotes() {
     return;
   }
   votingTimeout?.cancel();
+  gameResetTimer?.cancel();
   console.log(`Voting round: ${votingRounds}`);
   console.log(votes);
   const sorted = Array.from(votes.entries()).sort((a, b) => {
@@ -248,8 +254,8 @@ async function tallyVotes() {
   await registerVotingResults(gameId, votingRounds, sorted[0][0], sorted[0][1], totalVotes);
   votingRounds++;
   newVote();
-  if(votingTimeout != null){
-    io.emit("state", {fen: game.fen(),  nextVoteTime: votingTimeout.timeoutTime});
+  if (votingTimeout != null) {
+    io.emit("state", {fen: game.fen(), nextVoteTime: votingTimeout.timeoutTime});
   }
   io.emit("votes", sorted);
   if (game.isCheckmate()) {
@@ -260,7 +266,7 @@ async function tallyVotes() {
   }
 }
 
-function finishGame(winningGroup: Group, timeout: boolean){
+function finishGame(winningGroup: Group, timeout: boolean) {
   gameStatus = "waiting";
   io.emit("winner", {winnerGroup: winningGroup, timeout});
   winsPerGroup[winningGroup] += 1;
@@ -269,9 +275,10 @@ function finishGame(winningGroup: Group, timeout: boolean){
   gameId = -1;
 }
 
-function resetAfterDelay() {
+function resetAfterDelay(switchTeams = true) {
   votingTimeout?.cancel();
-  setTimeout(reset, intergameDelaySeconds * 1000);
+  gameResetTimer?.cancel();
+  gameResetTimer = new ManagedTimer(()=>reset(switchTeams), intergameDelaySeconds*1000);
 }
 
 function sendVotingUpdate() {
@@ -292,7 +299,8 @@ async function sendGameInfoToAll() {
         waitingReason,
         role: getRoleFromGroup(socket.data.group, currentGroupOne),
         group: socket.data.group,
-        playersPerGroup, winsPerGroup
+        playersPerGroup, winsPerGroup,
+        nextGameTime: nextGameTime(gameStatus, gameResetTimer),
       });
     }
   }
