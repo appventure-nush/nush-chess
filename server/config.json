@@ -1,5 +1,5 @@
 {
-  "votingTimeoutSeconds": 60,
+  "votingTimeoutSeconds": 30,
   "votingThreshold": 1,
   "numRequiredPlayers": 1,
   "intergameDelaySeconds": 60,
@@ -7,5 +7,6 @@
   "host": "localhost",
   "user": "chess",
   "password": "chess",
-  "database": "chess"
+  "database": "chess",
+  "noVoteThreshold": 2
 }

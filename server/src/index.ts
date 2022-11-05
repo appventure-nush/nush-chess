@@ -1,4 +1,4 @@
-import {Server, Socket} from "socket.io";
+import {Server} from "socket.io";
 import express from 'express';
 import bodyParser from "body-parser";
 import http from "http";
@@ -7,15 +7,17 @@ import verifyToken from "./tokens";
 import * as fs from "fs";
 import {
   ClientToServerEvents,
-  GameStatus,
-  Group,
+  GameStatus, Group,
   InterServerEvents,
   Role,
   ServerToClientEvents,
-  SocketData, WaitingReason
+  SocketData,
+  WaitingReason
 } from "./types";
 import setupDatabase from "./database/setupdatabase";
 import {completeGame, newGame, playerStats, registerVote, registerVotingResults, winStats} from "./database/api";
+import {getGroupFromRole, getRoleFromGroup, otherGroup, sum} from "./util";
+import {ManagedTimer} from "./ManagedTimer";
 
 const app = express();
 
@@ -29,8 +31,7 @@ const game = new Chess();
 let gameId = -1;
 
 let votes: Map<string, number> | null = null;
-let votingTimeout: NodeJS.Timeout | null = null;
-let nextVoteTime: number = 0;
+let votingTimeout: ManagedTimer | null = null;
 let votingRounds = 0;
 
 const {
@@ -49,31 +50,6 @@ let currentGroupOne: Role = "w";
 let gameStatus: GameStatus = "waiting";
 let waitingReason: WaitingReason = "noPlayers";
 
-function getRoleFromGroup(group: Group): Role | false {
-  if (group == 1) {
-    return currentGroupOne;
-  } else if (group == 2) {
-    if (currentGroupOne == "w") {
-      return "b";
-    } else {
-      return "w";
-    }
-  }
-  return false;
-}
-
-function getGroupFromRole(role: Role): Group {
-  if (role == currentGroupOne) {
-    return 1;
-  }
-  return 2;
-}
-
-function otherGroup(group: Group): Group {
-  if (group == 1) return 2;
-  return 1;
-}
-
 const io = new Server<ClientToServerEvents,
   ServerToClientEvents,
   InterServerEvents,
@@ -82,7 +58,8 @@ const io = new Server<ClientToServerEvents,
     origin: "http://localhost:5137",
     methods: ["GET", "POST"]
   },
-  transports: ["websocket"]
+  transports: ["websocket"],
+  pingInterval: 5000,
 });
 
 io.on("connection", (socket) => {
@@ -95,7 +72,7 @@ io.on("connection", (socket) => {
       socket.emit("error", "You are not authenticated");
       return;
     }
-    if (game.turn() != getRoleFromGroup(socket.data.group)) {
+    if (game.turn() != getRoleFromGroup(socket.data.group, currentGroupOne)) {
       socket.emit("error", "Not your turn");
       return;
     }
@@ -118,11 +95,11 @@ io.on("connection", (socket) => {
     await registerVote(gameId, votingRounds, socket.data.email, move);
 
     const numVotes = sum(Array.from(votes.values()));
-    const players = playersPerGroup[getGroupFromRole(game.turn())];
+    const players = playersPerGroup[getGroupFromRole(game.turn(), currentGroupOne)];
 
     // Number of votes have passed threshold
-    if (players > 0 && numVotes / players >= votingThreshold) {
-      await tallyVotes();
+    if (gameStatus == "playing" && (players == 0 || numVotes / players >= votingThreshold)) {
+      tallyVotes();
     } else {
       sendVotingUpdate();
     }
@@ -141,21 +118,24 @@ io.on("connection", (socket) => {
       }
 
       const sockets = await io.fetchSockets();
-      // if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
-      //   return socket.emit("error", "You have already joined");
-      // }
 
       socket.data.email = decodedToken.unique_name;
       socket.data.username = decodedToken.name;
+      if (!allowRoleOverride) {
+        if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
+          return socket.emit("error", "You have already joined");
+        }
+        if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
+          socket.data.group = 1;
+        } else {
+          socket.data.group = 2;
+        }
+      } else {
+        socket.data.group = Math.random() > 0.5 ? 2 : 1;
+      }
 
+      console.log("Connected", socket.data.group);
 
-      // if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
-      //   socket.data.group = 1;
-      // } else {
-      //   socket.data.group = 2;
-      // }
-
-      socket.data.group = Math.random() > 0.5 ? 2 : 1;
 
       playersPerGroup[socket.data.group] += 1;
 
@@ -171,12 +151,12 @@ io.on("connection", (socket) => {
       socket.emit("gameInfo", {
         gameStatus,
         waitingReason,
-        role: getRoleFromGroup(socket.data.group),
+        role: getRoleFromGroup(socket.data.group, currentGroupOne),
         group: socket.data.group,
         playersPerGroup, winsPerGroup
       });
-      if (gameStatus == "playing") {
-        socket.emit("state", {fen: game.fen(), nextVoteTime});
+      if (gameStatus == "playing" && votingTimeout != null) {
+        socket.emit("state", {fen: game.fen(), nextVoteTime: votingTimeout.timeoutTime});
       }
     } catch (e: any) {
       socket.emit("error", e);
@@ -197,24 +177,28 @@ io.on("connection", (socket) => {
     if (!socket.data.group) {
       return
     }
-    console.log("Disconnected");
+    console.log("Disconnected", socket.data.group);
     playersPerGroup[socket.data.group] -= 1;
+    if (votes == null) {
+      return;
+    }
+    const numVotes = sum(Array.from(votes.values()));
+    const players = playersPerGroup[getGroupFromRole(game.turn(), currentGroupOne)];
+
+    // Number of votes have passed threshold
+    if (gameStatus == "playing" && (players == 0 || numVotes / players >= votingThreshold)) {
+      tallyVotes();
+    } else {
+      sendVotingUpdate();
+    }
   })
 })
-
-function sum(arr: number[]) {
-  let res = 0;
-  for (const elem of arr) {
-    res += elem;
-  }
-  return res;
-}
 
 async function reset(switchTeams = true) {
   gameStatus = "playing";
   waitingReason = "";
   if (votingTimeout != null) {
-    clearTimeout(votingTimeout);
+    votingTimeout.cancel();
   }
   if (switchTeams) {
     if (currentGroupOne == "w") {
@@ -223,18 +207,21 @@ async function reset(switchTeams = true) {
       currentGroupOne = "w";
     }
   }
-  gameId = await newGame(getGroupFromRole("w"));
+  gameId = await newGame(getGroupFromRole("w", currentGroupOne));
   votingRounds = 0;
   game.reset()
   newVote();
   await sendGameInfoToAll();
-  io.emit("state", {fen: game.fen(), nextVoteTime});
+  if (votingTimeout != null) {
+    io.emit("state", {fen: game.fen(), nextVoteTime: votingTimeout.timeoutTime});
+  }
 }
 
 async function tallyVotes() {
   if (votes == null) {
     return;
   }
+  votingTimeout?.cancel();
   console.log(`Voting round: ${votingRounds}`);
   console.log(votes);
   const sorted = Array.from(votes.entries()).sort((a, b) => {
@@ -243,23 +230,16 @@ async function tallyVotes() {
     return bNum - aNum;
   }).slice(0, 10);
 
-  const currentGroup = getGroupFromRole(game.turn());
+  const currentGroup = getGroupFromRole(game.turn(), currentGroupOne);
 
   if (sorted.length == 0) {
     // :skull:
-    io.emit("error", "No votes!");
     gameStatus = "waiting";
-    if (Math.min(...playersPerGroup) == 0) {
-      waitingReason = "noPlayers";
-    } else {
-      waitingReason = "noVotes";
+    waitingReason = "noVotes";
+    if (Math.min(...playersPerGroup) != 0) {
       resetAfterDelay();
     }
-    io.emit("winner", {winnerGroup: otherGroup(currentGroup), timeout: true});
-    winsPerGroup[otherGroup(currentGroup)] += 1;
-    await sendGameInfoToAll();
-    await completeGame(gameId, otherGroup(currentGroup), true);
-    gameId = -1;
+    finishGame(otherGroup(currentGroup), true);
     return;
   }
 
@@ -268,22 +248,29 @@ async function tallyVotes() {
   await registerVotingResults(gameId, votingRounds, sorted[0][0], sorted[0][1], totalVotes);
   votingRounds++;
   newVote();
-  io.emit("state", {fen: game.fen(), nextVoteTime});
+  if(votingTimeout != null){
+    io.emit("state", {fen: game.fen(),  nextVoteTime: votingTimeout.timeoutTime});
+  }
   io.emit("votes", sorted);
   if (game.isCheckmate()) {
-    io.emit("winner", {winnerGroup: currentGroup, timeout: false});
-    winsPerGroup[currentGroup] += 1;
-    gameStatus = "waiting";
     waitingReason = "gameCompleted";
     resetAfterDelay();
-    await sendGameInfoToAll();
-    await completeGame(gameId, currentGroup, false);
-    gameId = -1;
+    finishGame(currentGroup, false);
     return;
   }
 }
 
+function finishGame(winningGroup: Group, timeout: boolean){
+  gameStatus = "waiting";
+  io.emit("winner", {winnerGroup: winningGroup, timeout});
+  winsPerGroup[winningGroup] += 1;
+  sendGameInfoToAll();
+  completeGame(gameId, winningGroup, timeout);
+  gameId = -1;
+}
+
 function resetAfterDelay() {
+  votingTimeout?.cancel();
   setTimeout(reset, intergameDelaySeconds * 1000);
 }
 
@@ -292,8 +279,7 @@ function sendVotingUpdate() {
     return
   }
   const numVotes = sum(Array.from(votes.values()));
-  const players = playersPerGroup[getGroupFromRole(game.turn())];
-
+  const players = playersPerGroup[getGroupFromRole(game.turn(), currentGroupOne)];
   io.emit("votingUpdate", {numVotes, players})
 }
 
@@ -304,7 +290,7 @@ async function sendGameInfoToAll() {
       socket.emit("gameInfo", {
         gameStatus,
         waitingReason,
-        role: getRoleFromGroup(socket.data.group),
+        role: getRoleFromGroup(socket.data.group, currentGroupOne),
         group: socket.data.group,
         playersPerGroup, winsPerGroup
       });
@@ -315,10 +301,9 @@ async function sendGameInfoToAll() {
 function newVote() {
   votes = new Map<string, number>();
   if (votingTimeout != null) {
-    clearTimeout(votingTimeout);
+    votingTimeout.cancel();
   }
-  votingTimeout = setTimeout(tallyVotes, 1000 * votingTimeoutSeconds);
-  nextVoteTime = new Date().getTime() + 1000 * votingTimeoutSeconds;
+  votingTimeout = new ManagedTimer(tallyVotes, 1000 * votingTimeoutSeconds);
   sendVotingUpdate();
 }
 

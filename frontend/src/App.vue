@@ -150,7 +150,6 @@ export default {
       let status = "";
       let moveCol = game.turn() == "w" ? "White" : "Black";
 
-      console.log(game);
 
       if (game.isCheckmate()) {
         status = `Checkmate! ${moveCol} wins.`;
@@ -227,10 +226,11 @@ export default {
 
     socket.on("winner", ({winnerGroup, timeout}) => {
       if (timeout) {
-        app.state.status = `Group ${winnerGroup} won because the other group did not vote.`;
+        app.state.status = `Team ${winnerGroup} won because the other team did not vote.`;
       } else {
-        app.state.status = `Group ${winnerGroup} won.`;
+        app.state.status = `Team ${winnerGroup} won.`;
       }
+      app.state.nextVoteTimestamp = new Date().getTime();
     });
 
     socket.on("votingUpdate", ({numVotes, players}) => {
