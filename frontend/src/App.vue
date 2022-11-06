@@ -232,6 +232,7 @@ export default {
               // Handled by winner event
             } else if (waitingReason === "noPlayers") {
               this.state.status = "Waiting for more players to join.";
+              app.state.game.reset();
             } else if (waitingReason === "gameCompleted") {
               console.log(this.state.status);
             }
@@ -278,6 +279,9 @@ export default {
 
     this.state.auth = localStorage.getItem("token");
     socket.on("connect", () => {
+      if(location.origin.includes("http://")){
+        document.title = socket.id;
+      }
       if (this.state.auth) {
         socket.emit("auth", this.state.auth);
       }

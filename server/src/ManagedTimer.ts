@@ -13,6 +13,7 @@ export class ManagedTimer {
 
   cancel() {
     clearTimeout(this.timeoutRef);
+    this.timeoutTime = 0;
   }
 
   restart() {

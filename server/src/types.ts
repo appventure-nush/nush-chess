@@ -32,5 +32,7 @@ export interface InterServerEvents {
 export interface SocketData {
   email: string,
   username: string,
-  group: Group
+  group: Group,
+  hasVoted: boolean,
+  numSkippedVotes: number,
 }

@@ -1,4 +1,4 @@
-import {Server} from "socket.io";
+import {RemoteSocket, Server} from "socket.io";
 import express from 'express';
 import bodyParser from "body-parser";
 import http from "http";
@@ -40,7 +40,8 @@ const {
   numRequiredPlayers,
   votingThreshold,
   intergameDelaySeconds,
-  allowRoleOverride
+  allowRoleOverride,
+  noVoteThreshold
 } = JSON.parse(fs.readFileSync("./config.json", "ascii"))
 
 // Groups start from 1
@@ -77,6 +78,11 @@ io.on("connection", (socket) => {
       socket.emit("error", "Not your turn");
       return;
     }
+    if (socket.data.hasVoted) {
+      socket.emit("error", "You have already voted.");
+      return;
+    }
+
     const result = game.move(move);
     if (result == null) {
       socket.emit("error", "Invalid move");
@@ -92,6 +98,8 @@ io.on("connection", (socket) => {
     } else {
       votes.set(move, 1);
     }
+
+    socket.data.hasVoted = true;
 
     await registerVote(gameId, votingRounds, socket.data.email, move);
 
@@ -122,6 +130,9 @@ io.on("connection", (socket) => {
 
       socket.data.email = decodedToken.unique_name;
       socket.data.username = decodedToken.name;
+      socket.data.hasVoted = false;
+      socket.data.numSkippedVotes = 0;
+
       if (!allowRoleOverride) {
         if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
           return socket.emit("error", "You have already joined");
@@ -139,12 +150,12 @@ io.on("connection", (socket) => {
 
 
       playersPerGroup[socket.data.group] += 1;
+      console.log("players per group", playersPerGroup);
 
-      console.log(Math.min(playersPerGroup[1], playersPerGroup[2]), gameStatus);
       if (gameStatus == 'waiting') {
         // Game is not in play and minimum players are satisfied
         if (Math.min(playersPerGroup[1], playersPerGroup[2]) >= numRequiredPlayers) {
-          if(!gameResetTimer?.running()){
+          if (!gameResetTimer?.running()) {
             await resetAfterDelay(false);
             await sendGameInfoToAll();
           }
@@ -184,7 +195,21 @@ io.on("connection", (socket) => {
     }
     console.log("Disconnected", socket.data.group);
     playersPerGroup[socket.data.group] -= 1;
-    if (votes == null) {
+    console.log("players per group", playersPerGroup);
+    // Maybe not enough players for game?
+    if (gameResetTimer?.running()) {
+
+      if (Math.min(...playersPerGroup) < numRequiredPlayers) {
+        gameResetTimer?.cancel();
+        gameStatus = "waiting";
+        waitingReason = "noPlayers";
+        gameId = -1;
+        sendGameInfoToAll();
+      }
+    }
+
+    // Skip voting check if no vote, or user kicked because of non voting
+    if (votes == null || (socket.data.numSkippedVotes && socket.data.numSkippedVotes >= noVoteThreshold)) {
       return;
     }
     const numVotes = sum(Array.from(votes.values()));
@@ -238,6 +263,8 @@ async function tallyVotes() {
 
   const currentGroup = getGroupFromRole(game.turn(), currentGroupOne);
 
+  await pruneUsers(currentGroup);
+
   if (sorted.length == 0) {
     // :skull:
     gameStatus = "waiting";
@@ -278,7 +305,7 @@ function finishGame(winningGroup: Group, timeout: boolean) {
 function resetAfterDelay(switchTeams = true) {
   votingTimeout?.cancel();
   gameResetTimer?.cancel();
-  gameResetTimer = new ManagedTimer(()=>reset(switchTeams), intergameDelaySeconds*1000);
+  gameResetTimer = new ManagedTimer(() => reset(switchTeams), intergameDelaySeconds * 1000);
 }
 
 function sendVotingUpdate() {
@@ -303,6 +330,28 @@ async function sendGameInfoToAll() {
         nextGameTime: nextGameTime(gameStatus, gameResetTimer),
       });
     }
+  }
+}
+
+async function pruneUsers(currentGroup: Group) {
+  const sockets = await io.sockets.fetchSockets();
+  for (const socket of sockets) {
+    if (socket.data.group == currentGroup) {
+      if (!socket.data.hasVoted) {
+        socket.data.numSkippedVotes += 1;
+      } else {
+        // Reset on votes
+        socket.data.numSkippedVotes = 0;
+      }
+      if (socket.data.numSkippedVotes >= noVoteThreshold) {
+        // Bye
+        console.log(socket.id);
+        socket.emit("error", "You have been disconnected for not voting");
+        socket.disconnect();
+        continue;
+      }
+    }
+    socket.data.hasVoted = false;
   }
 }
 
