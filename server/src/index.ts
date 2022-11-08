@@ -295,6 +295,14 @@ async function tallyVotes() {
     finishGame(currentGroup, false);
     return;
   }
+  if(game.isDraw()){
+    waitingReason = "gameCompleted";
+    gameStatus = "waiting";
+    resetAfterDelay();
+    sendGameInfoToAll();
+    gameId = -1;
+    return;
+  }
 }
 
 function finishGame(winningGroup: Group, timeout: boolean) {
