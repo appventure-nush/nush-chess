@@ -93,8 +93,8 @@
           </div>
         </div>
       </div>
+      Top 10 votes for the previous turn:
       <div class="flex max-w-[80vw] gap-4">
-        <span> <br/> </span>
         <ol
             class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full"
             v-if="state.votes.length"
@@ -302,6 +302,9 @@ export default {
 
     socket.on("error", (error) => {
       console.log(error);
+      if(error.includes("not voting")){
+        alert(error);
+      }
       app.state.errors.push(error);
     });
 

@@ -279,12 +279,16 @@ async function tallyVotes() {
   game.move(sorted[0][0]);
   const totalVotes = sum(Array.from(votes.values()));
   await registerVotingResults(gameId, votingRounds, sorted[0][0], sorted[0][1], totalVotes);
+  for(const socket of await io.fetchSockets()){
+    if(socket.data.group == currentGroup){
+      socket.emit("votes", sorted)
+    }
+  }
   votingRounds++;
   newVote();
   if (votingTimeout != null) {
     io.emit("state", {fen: game.fen(), nextVoteTime: votingTimeout.timeoutTime});
   }
-  io.emit("votes", sorted);
   if (game.isCheckmate()) {
     waitingReason = "gameCompleted";
     resetAfterDelay();
