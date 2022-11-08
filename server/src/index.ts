@@ -335,6 +335,7 @@ async function sendGameInfoToAll() {
 
 async function pruneUsers(currentGroup: Group) {
   const sockets = await io.sockets.fetchSockets();
+  const _playersPerGroup = [0, 0, 0];
   for (const socket of sockets) {
     if (socket.data.group == currentGroup) {
       if (!socket.data.hasVoted) {
@@ -345,14 +346,17 @@ async function pruneUsers(currentGroup: Group) {
       }
       if (socket.data.numSkippedVotes >= noVoteThreshold) {
         // Bye
-        console.log(socket.id);
+        console.log("kicked", socket.id);
         socket.emit("error", "You have been disconnected for not voting");
         socket.disconnect();
         continue;
       }
     }
+    _playersPerGroup[socket.data.group] += 1;
     socket.data.hasVoted = false;
   }
+  playersPerGroup[1] = _playersPerGroup[1];
+  playersPerGroup[2] = _playersPerGroup[2];
 }
 
 function newVote() {
