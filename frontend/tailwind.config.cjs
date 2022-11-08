@@ -9,6 +9,10 @@ module.exports = {
                     mid: "#43919d",
                     dark: "#00636f",
                 },
+                chess: {
+                    light: "#F0D9B5",
+                    dark: "#B58863",
+                },
             },
         },
     },
