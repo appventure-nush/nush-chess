@@ -258,6 +258,9 @@ async function tallyVotes() {
   const sorted = Array.from(votes.entries()).sort((a, b) => {
     const aNum = a[1];
     const bNum = b[1];
+    if (aNum == bNum) {
+      return Math.random() - 0.5;
+    }
     return bNum - aNum;
   }).slice(0, 10);
 
@@ -279,8 +282,8 @@ async function tallyVotes() {
   game.move(sorted[0][0]);
   const totalVotes = sum(Array.from(votes.values()));
   await registerVotingResults(gameId, votingRounds, sorted[0][0], sorted[0][1], totalVotes);
-  for(const socket of await io.fetchSockets()){
-    if(socket.data.group == currentGroup){
+  for (const socket of await io.fetchSockets()) {
+    if (socket.data.group == currentGroup) {
       socket.emit("votes", sorted)
     }
   }
@@ -295,7 +298,7 @@ async function tallyVotes() {
     finishGame(currentGroup, false);
     return;
   }
-  if(game.isDraw()){
+  if (game.isDraw()) {
     waitingReason = "gameCompleted";
     gameStatus = "waiting";
     resetAfterDelay();
