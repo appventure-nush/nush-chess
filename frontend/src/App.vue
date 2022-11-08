@@ -1,19 +1,18 @@
 <template>
   <div class="flex flex-col gap-4">
-    <div v-if="state.auth" class="flex gap-4">
+    <div v-if="state.auth" class="flex flex-col items-center gap-4">
       <span class="fixed top-0 left-0 p-4 text-xl">
         chess.<span class="text-nush-light">nush</span>.app
       </span>
       <div class="flex-1">
-        <div class="flex gap-4">
+        <div class="flex flex-col items-center gap-4">
           <!-- sidebar -->
-          <div class="flex flex-col gap-4">
-            <span> <br/> </span>
-            <div class="outline-none rounded p-4 bg-[#F0D9B5] text-black">
+          <div class="grid gap-4 grid-cols-2">
+            <div class="outline-none rounded p-4 bg-chess-light text-black">
               <span class="text-xl">Team {{ state.group }}</span>
               <img
-                  :src="`https://chessboardjs.com/img/chesspieces/alpha/${state.role}K.png`"
-                  class="w-12 h-12 m-auto"
+                :src="`https://chessboardjs.com/img/chesspieces/alpha/${state.role}K.png`"
+                class="w-12 h-12 m-auto"
               />
               <span class="text-md">
                 Playing as {{ state.role == "w" ? "white" : "black" }}
@@ -21,54 +20,79 @@
             </div>
 
             <div
-                class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
+              class="
+                flex flex-col
+                content-center
+                justify-center
+                outline-none
+                rounded
+                p-4
+                bg-chess-dark
+                text-white text-xl
+              "
             >
-              <span>Voting window</span> <br/>
+              <span>Voting window</span> <br />
 
               <span class="font-mono text-md">
                 {{
                   Math.max(
-                      (state.nextVoteTimestamp - state.time.getTime()) / 1000,
-                      0
+                    (state.nextVoteTimestamp - state.time.getTime()) / 1000,
+                    0
                   ).toFixed(2)
                 }}s
               </span>
-              <br/>
+              <br />
               <span class="text-sm" v-if="state.game.turn() === state.role">
                 You have not voted
               </span>
             </div>
-            <div class="outline-none rounded p-4 bg-[#F0D9B5] text-black">
-              <span class="text-xl"> {{ state.numVotes }} votes </span> <br/>
+            <div class="outline-none rounded p-4 bg-chess-dark text-white">
+              <span class="text-xl"> {{ state.numVotes }} votes </span> <br />
               <span> of {{ state.numPlayers }} players </span>
             </div>
-            <div class="outline-none rounded p-4 bg-[#B58863] text-white text-xl">
-              <span class="text-xl">Your team: {{ state.numWins[state.group] }}</span> <br/>
-              <span> Other team: {{ state.numWins[state.group === 1 ? 2 : 1] }} </span>
+            <div
+              class="outline-none rounded p-4 bg-chess-light text-black text-xl"
+            >
+              <span class="text-xl"
+                >Your team: {{ state.numWins[state.group] }}</span
+              >
+              <br />
+              <span>
+                Other team: {{ state.numWins[state.group === 1 ? 2 : 1] }}
+              </span>
             </div>
           </div>
-          <div>
+          <!-- status and board -->
+          <div class="flex flex-col items-center">
             <div class="text-2xl mb-2">
               <span> {{ state.status }} </span>
             </div>
             <Board
-                @updateStatus="updateStatus(state.game)"
-                :fen="state.fen"
-                :role="state.role"
-                id="chessboard"
-                :game="state.game"
+              class="w-[80vw] max-w-[50vh]"
+              @updateStatus="updateStatus(state.game)"
+              :fen="state.fen"
+              :role="state.role"
+              id="chessboard"
+              :game="state.game"
             ></Board>
           </div>
         </div>
       </div>
-      <div class="flex flex-col gap-4">
-        <span> <br/> </span>
-        <ol class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full" v-if="state.votes.length">
+      <div class="flex max-w-[80vw] gap-4">
+        <span> <br /> </span>
+        <ol
+          class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full"
+          v-if="state.votes.length"
+        >
           <li v-for="vote in state.votes" :key="vote">
             <span> {{ `${vote[0]} (${vote[1]} votes)\n` }}</span>
           </li>
         </ol>
-        <span class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full" v-else>No votes.</span>
+        <span
+          class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full"
+          v-else
+          >No votes.</span
+        >
       </div>
     </div>
 
@@ -76,9 +100,9 @@
       <span class="text-2xl">
         chess.<span class="text-nush-mid">nush</span>.app
       </span>
-      <br/>
+      <br />
       <button
-          class="
+        class="
           transition
           bg-nush-dark
           hover:bg-nush-mid
@@ -89,7 +113,7 @@
           px-4
           rounded
         "
-          @click="signIn"
+        @click="signIn"
       >
         Enter with Office365
       </button>
@@ -99,9 +123,9 @@
 
 <script>
 import Board from "./components/Board.vue";
-import {Chess} from "chess.js";
+import { Chess } from "chess.js";
 
-import {reactive, ref} from "vue";
+import { reactive, ref } from "vue";
 
 export default {
   name: "App",
@@ -126,7 +150,7 @@ export default {
       time: {},
     });
 
-    return {state};
+    return { state };
   },
 
   created() {
@@ -136,20 +160,18 @@ export default {
   },
 
   methods: {
-
     signIn() {
       location.href =
-          `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
-          `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
-          `redirect_uri=${location.origin}&` +
-          `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
+        `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
+        `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
+        `redirect_uri=${location.origin}&` +
+        `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
     },
 
     updateStatus(game) {
       console.log("update");
       let status = "";
       let moveCol = game.turn() == "w" ? "White" : "Black";
-
 
       if (game.isCheckmate()) {
         status = `Checkmate! ${moveCol} wins.`;
@@ -167,8 +189,7 @@ export default {
       this.state.status = status;
     },
 
-    initGame() {
-    },
+    initGame() {},
   },
 
   mounted() {
@@ -183,7 +204,7 @@ export default {
       console.log(event, args);
     });
 
-    socket.on("state", ({fen, nextVoteTime}) => {
+    socket.on("state", ({ fen, nextVoteTime }) => {
       console.log("Got state", fen);
       app.state.nextVoteTimestamp = nextVoteTime;
       app.state.game.load(fen);
@@ -192,31 +213,38 @@ export default {
     });
 
     socket.on(
-        "gameInfo",
-        ({role: _role, playersPerGroup, winsPerGroup, gameStatus, waitingReason, group}) => {
-          app.state.role = _role;
-          app.state.group = group;
-          app.state.numWins = winsPerGroup;
-          app.state.votes = [];
-          if (gameStatus === "waiting") {
-            if (waitingReason === "noVotes") {
-              // NO need to do anything here
-              // Handled by winner event
-            } else if (waitingReason === "noPlayers") {
-              this.state.status = "Waiting for more players to join.";
-            } else if (waitingReason === "gameCompleted") {
-              console.log(this.state.status);
-            }
-          } else {
-            app.initGame();
+      "gameInfo",
+      ({
+        role: _role,
+        playersPerGroup,
+        winsPerGroup,
+        gameStatus,
+        waitingReason,
+        group,
+      }) => {
+        app.state.role = _role;
+        app.state.group = group;
+        app.state.numWins = winsPerGroup;
+        app.state.votes = [];
+        if (gameStatus === "waiting") {
+          if (waitingReason === "noVotes") {
+            // NO need to do anything here
+            // Handled by winner event
+          } else if (waitingReason === "noPlayers") {
+            this.state.status = "Waiting for more players to join.";
+          } else if (waitingReason === "gameCompleted") {
+            console.log(this.state.status);
           }
-
-          // TODO: don't request player stats all the time
-          socket.emit("playerStats", (stats)=>{
-            // TODO: do something with player stats
-            console.log(stats);
-          });
+        } else {
+          app.initGame();
         }
+
+        // TODO: don't request player stats all the time
+        socket.emit("playerStats", (stats) => {
+          // TODO: do something with player stats
+          console.log(stats);
+        });
+      }
     );
 
     socket.on("votes", (votes) => {
@@ -224,7 +252,7 @@ export default {
       app.state.votes = votes;
     });
 
-    socket.on("winner", ({winnerGroup, timeout}) => {
+    socket.on("winner", ({ winnerGroup, timeout }) => {
       if (timeout) {
         app.state.status = `Team ${winnerGroup} won because the other team did not vote.`;
       } else {
@@ -233,7 +261,7 @@ export default {
       app.state.nextVoteTimestamp = new Date().getTime();
     });
 
-    socket.on("votingUpdate", ({numVotes, players}) => {
+    socket.on("votingUpdate", ({ numVotes, players }) => {
       app.state.numVotes = numVotes;
       app.state.numPlayers = players;
     });
@@ -253,7 +281,7 @@ export default {
       if (this.state.auth) {
         socket.emit("auth", this.state.auth);
       }
-    })
+    });
   },
 };
 </script>
