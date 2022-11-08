@@ -47,7 +47,6 @@ export default {
       if (game.isGameOver()) return false;
 
       // Can't play if not our turn
-      console.log(game.turn(), this.role[0]);
       if (game.turn() !== this.role[0]) {
         return false;
       }
@@ -86,6 +85,7 @@ export default {
       }
 
       socket.emit("vote", move.san);
+      this.$emit("vote");
       this.$emit("updateStatus");
     },
 
