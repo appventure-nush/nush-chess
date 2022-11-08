@@ -5,109 +5,142 @@
         chess.<span class="text-nush-light">nush</span>.app
       </span>
       <div class="flex-1">
-        <div class="flex flex-col items-center gap-4">
+        <div class="flex flex-col items-center gap-4 w-[80vw] max-w-[50vh]">
           <!-- sidebar -->
-          <div class="grid gap-4 grid-cols-2">
-            <div class="outline-none rounded p-4 bg-chess-light text-black">
-              <span class="text-xl">Team {{ state.group }}</span>
-              <img
-                  :src="`https://chessboardjs.com/img/chesspieces/alpha/${state.role}K.png`"
-                  class="w-12 h-12 m-auto"
-              />
-              <span class="text-md">
-                Playing as {{ state.role == "w" ? "white" : "black" }}
-              </span>
-            </div>
+          <div class="grid align-middle gap-4 grid-cols-2">
+            <div>
+              <!--  If game is in play, show voting timeout  -->
+              <div
+                v-if="state.gameStatus === 'playing'"
+                class="outline-none rounded p-4 bg-[#B58863] text-white text-md"
+              >
+                <span>Voting window</span> <br />
 
-            <!--  If game is in play, show voting timeout  -->
-            <div v-if="state.gameStatus === 'playing' "
-                 class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
-            >
-              <span>Voting window</span> <br/>
-
-              <span class="font-mono text-md">
-                {{
-                  Math.max(
+                <span class="font-mono text-md">
+                  {{
+                    Math.max(
                       (state.nextVoteTimestamp - state.time.getTime()) / 1000,
                       0
-                  ).toFixed(2)
-                }}s
-              </span>
-              <br/>
-              <span class="text-sm" v-if="state.game.turn() === state.role">
-                You have not voted
-              </span>
-            </div>
-            <!--  If waiting for game start, show countdown  -->
-            <div v-else-if="state.nextGameTime > 0"
-                 class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
-            >
-              <span>Game starts in</span> <br/>
-              <span class="font-mono text-md">
-                {{
-                  Math.max(
+                    ).toFixed(2)
+                  }}s
+                </span>
+                <br />
+              </div>
+              <!--  If waiting for game start, show countdown  -->
+              <div
+                v-else-if="state.nextGameTime > 0"
+                class="outline-none rounded p-4 bg-[#B58863] text-white text-md"
+              >
+                <span>Game starts in</span> <br />
+                <span class="font-mono text-md">
+                  {{
+                    Math.max(
                       (state.nextGameTime - state.time.getTime()) / 1000,
                       0
-                  ).toFixed(2)
-                }}s
-              </span>
-            </div>
-            <!--  Waiting for players  -->
-            <div v-else
-                 class="outline-none rounded p-4 bg-[#B58863] text-white text-xl"
-            >
-              <span>Waiting for players</span> <br/>
-            </div>
-
-            <div v-if="state.gameStatus === 'playing'"
-                 class="outline-none rounded p-4 bg-[#F0D9B5] text-black">
-              <span class="text-xl"> {{ state.numVotes }} votes </span> <br/>
-              <span> of {{ state.numPlayers }} players </span>
-            </div>
-            <div
-                class="outline-none rounded p-4 bg-chess-light text-black text-xl"
-            >
-              <span class="text-xl"
-              >Your team: {{ state.numWins[state.group] }}</span
+                    ).toFixed(2)
+                  }}s
+                </span>
+              </div>
+              <!--  Waiting for players  -->
+              <div
+                v-else
+                class="outline-none rounded p-4 bg-[#B58863] text-white text-md"
               >
-              <br/>
-              <span>
-                Other team: {{ state.numWins[state.group === 1 ? 2 : 1] }}
-              </span>
+                <span>Waiting for players</span> <br />
+              </div>
+            </div>
+            <div>
+              <div
+                v-if="state.gameStatus === 'playing'"
+                class="outline-none rounded p-4 bg-[#F0D9B5] text-black"
+              >
+                <span class="text-xl"> {{ state.numVotes }} votes </span> <br />
+                <span> of {{ state.numPlayers }} players </span>
+              </div>
+              <div
+                class="
+                  outline-none
+                  rounded
+                  p-4
+                  bg-chess-light
+                  text-black text-md
+                "
+              >
+                <span class="text-md"
+                  >Your team: {{ state.numWins[state.group] }}</span
+                >
+                <br />
+                <span>
+                  Other team: {{ state.numWins[state.group === 1 ? 2 : 1] }}
+                </span>
+              </div>
             </div>
           </div>
           <!-- status and board -->
           <div class="flex flex-col items-center">
-            <div class="text-2xl mb-2">
+            <div class="text-2xl">
               <span> {{ state.status }} </span>
             </div>
             <Board
-                class="w-[80vw] max-w-[50vh]"
-                @updateStatus="updateStatus(state.game)"
-                @vote="setVoted()"
-                :fen="state.fen"
-                :role="state.role"
-                id="chessboard"
-                :game="state.game"
+              class="w-[80vw] max-w-[50vh]"
+              @updateStatus="updateStatus(state.game)"
+              @vote="setVoted()"
+              :fen="state.fen"
+              :role="state.role"
+              id="chessboard"
+              :game="state.game"
             ></Board>
           </div>
         </div>
       </div>
-      Top 10 votes for the previous turn:
-      <div class="flex max-w-[80vw] gap-4">
-        <ol
-            class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full"
-            v-if="state.votes.length"
+
+      <div class="flex justify-evenly gap-4 w-[80vw] max-w-[50vh]">
+        <div
+          class="
+            outline-none
+            rounded
+            bg-chess-light
+            text-black
+            flex flex-col
+            items-center
+            justify-center
+            p-4
+          "
         >
-          <li v-for="vote in state.votes" :key="vote">
-            <span> {{ `${vote[0]} (${vote[1]} votes)\n` }}</span>
-          </li>
-        </ol>
-        <span
-            class="outline outline-1 outline-[#F0D9B5] rounded w-80 p-4 h-full"
-            v-else
-        >No votes.</span
-        >
+          <span class="text-md"
+            >Team
+            <span class="whitespace-nowrap italic">
+              {{ ["En Passant", "Back-Rank"][state.group] }}</span
+            >
+          </span>
+          <img
+            :src="`https://chessboardjs.com/img/chesspieces/alpha/${state.role}K.png`"
+            class="w-12 h-12 m-auto"
+          />
+        </div>
+
+        <div class="flex flex-col items-center justify-center">
+          <div
+            class="
+              max-w-[80vw]
+              outline outline-1 outline-[#F0D9B5]
+              rounded
+              py-2
+              px-4
+            "
+          >
+            <span class="text-lg">Past vote</span>
+            <div class="flex flex-col" v-if="state.votes.length">
+              <div v-for="vote in state.votes.slice(0, 3)" :key="vote">
+                {{ `${vote[0]}: ${vote[1]} votes` }}
+              </div>
+            </div>
+            <span v-else>
+              <br />
+              No votes
+            </span>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -115,9 +148,9 @@
       <span class="text-2xl">
         chess.<span class="text-nush-mid">nush</span>.app
       </span>
-      <br/>
+      <br />
       <button
-          class="
+        class="
           transition
           bg-nush-dark
           hover:bg-nush-mid
@@ -128,7 +161,7 @@
           px-4
           rounded
         "
-          @click="signIn"
+        @click="signIn"
       >
         Enter with Office365
       </button>
@@ -138,14 +171,17 @@
 
 <script>
 import Board from "./components/Board.vue";
-import {Chess} from "chess.js";
+import TestBoard from "./components/TestBoard.vue";
 
-import {reactive, ref} from "vue";
+import { Chess } from "chess.js";
+
+import { reactive, ref } from "vue";
 
 export default {
   name: "App",
   components: {
     Board,
+    TestBoard,
   },
 
   setup() {
@@ -169,7 +205,7 @@ export default {
       time: {},
     });
 
-    return {state};
+    return { state };
   },
 
   created() {
@@ -181,10 +217,10 @@ export default {
   methods: {
     signIn() {
       location.href =
-          `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
-          `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
-          `redirect_uri=${location.origin}&` +
-          `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
+        `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
+        `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
+        `redirect_uri=${location.origin}&` +
+        `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
     },
 
     updateStatus(game) {
@@ -205,7 +241,7 @@ export default {
           } else {
             status = `It is not your turn`;
           }
-        }else{
+        } else {
           status = `You have not voted yet`;
         }
         if (game.isCheck()) {
@@ -218,14 +254,13 @@ export default {
       this.state.status = status;
     },
 
-    setVoted(){
+    setVoted() {
       console.log("Voted");
       this.state.voted = true;
       console.log("voted", this.state.voted);
     },
 
-    initGame() {
-    },
+    initGame() {},
   },
 
   mounted() {
@@ -240,7 +275,7 @@ export default {
       console.log(event, args);
     });
 
-    socket.on("state", ({fen, nextVoteTime}) => {
+    socket.on("state", ({ fen, nextVoteTime }) => {
       console.log("Got state", fen);
       app.state.nextVoteTimestamp = nextVoteTime;
       app.state.voted = false;
@@ -250,34 +285,42 @@ export default {
     });
 
     socket.on(
-        "gameInfo",
-        ({role: _role, playersPerGroup, winsPerGroup, gameStatus, waitingReason, group, nextGameTime}) => {
-          app.state.role = _role;
-          app.state.group = group;
-          app.state.numWins = winsPerGroup;
-          app.state.votes = [];
-          app.state.gameStatus = gameStatus;
-          app.state.nextGameTime = nextGameTime;
-          if (gameStatus === "waiting") {
-            if (waitingReason === "noVotes") {
-              // NO need to do anything here
-              // Handled by winner event
-            } else if (waitingReason === "noPlayers") {
-              this.state.status = "Waiting for more players to join.";
-              app.state.game.reset();
-            } else if (waitingReason === "gameCompleted") {
-              console.log(this.state.status);
-            }
-          } else {
-            app.initGame();
+      "gameInfo",
+      ({
+        role: _role,
+        playersPerGroup,
+        winsPerGroup,
+        gameStatus,
+        waitingReason,
+        group,
+        nextGameTime,
+      }) => {
+        app.state.role = _role;
+        app.state.group = group;
+        app.state.numWins = winsPerGroup;
+        app.state.votes = [];
+        app.state.gameStatus = gameStatus;
+        app.state.nextGameTime = nextGameTime;
+        if (gameStatus === "waiting") {
+          if (waitingReason === "noVotes") {
+            // NO need to do anything here
+            // Handled by winner event
+          } else if (waitingReason === "noPlayers") {
+            this.state.status = "Waiting for more players to join.";
+            app.state.game.reset();
+          } else if (waitingReason === "gameCompleted") {
+            console.log(this.state.status);
           }
-
-          // TODO: don't request player stats all the time
-          socket.emit("playerStats", (stats) => {
-            // TODO: do something with player stats
-            console.log(stats);
-          });
+        } else {
+          app.initGame();
         }
+
+        // TODO: don't request player stats all the time
+        socket.emit("playerStats", (stats) => {
+          // TODO: do something with player stats
+          console.log(stats);
+        });
+      }
     );
 
     socket.on("votes", (votes) => {
@@ -286,7 +329,7 @@ export default {
       app.state.voted = false;
     });
 
-    socket.on("winner", ({winnerGroup, timeout}) => {
+    socket.on("winner", ({ winnerGroup, timeout }) => {
       if (timeout) {
         app.state.status = `Team ${winnerGroup} won because the other team did not vote.`;
       } else {
@@ -295,14 +338,14 @@ export default {
       app.state.nextVoteTimestamp = new Date().getTime();
     });
 
-    socket.on("votingUpdate", ({numVotes, players}) => {
+    socket.on("votingUpdate", ({ numVotes, players }) => {
       app.state.numVotes = numVotes;
       app.state.numPlayers = players;
     });
 
     socket.on("error", (error) => {
       console.log(error);
-      if(error.includes("not voting")){
+      if (error.includes("not voting")) {
         alert(error);
       }
       app.state.errors.push(error);
