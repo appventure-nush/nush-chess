@@ -28,7 +28,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   vote: (move: string) => void;
   auth: (token: string) => void;
-  leaderboard: (callback: (data: LeaderboardEntry[]) => void) => void;
+  leaderboard: (callback: (data: LeaderboardEntry[]|null) => void) => void;
 }
 
 export interface InterServerEvents {
