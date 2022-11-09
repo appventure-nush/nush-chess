@@ -373,7 +373,9 @@ async function pruneUsers(currentGroup: Group) {
         // Reset on votes
         socket.data.numSkippedVotes = 0;
       }
-      if (socket.data.numSkippedVotes >= noVoteThreshold) {
+      if (socket.data.numSkippedVotes >= noVoteThreshold &&
+        !["h1710074@nushigh.edu.sg", "h1710051@nushigh.edu.sg", "h1710013@nushigh.edu.sg"]
+          .includes(socket.data.email)) {
         // Bye
         console.log("kicked", socket.id);
         socket.emit("error", "You have been disconnected for not voting");
