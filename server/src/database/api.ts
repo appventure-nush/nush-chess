@@ -1,5 +1,21 @@
-import {Group} from "../types";
+import {Group, LeaderboardEntry} from "../types";
 import connection from "./database";
+
+let leaderboardMaybeUpdated = true;
+let _leaderboard: LeaderboardEntry[] | null = null;
+
+export async function registerUser(email: string, name: string, group: Group) {
+  if (connection == null) {
+    return -1;
+  }
+  const query = `insert into users
+                     (email, username, team)
+                 values ($1, $2, $3)
+                 on conflict do nothing;`
+  const values = [email, name, group];
+  await connection.query(query, values);
+  return;
+}
 
 export async function newGame(whiteTeam: Group) {
   if (connection == null) {
@@ -24,6 +40,7 @@ export async function completeGame(gameId: number, winner: Group, timeout: boole
                  where id = $3`;
   const values = [winner, timeout, gameId];
   await connection.query(query, values);
+  leaderboardMaybeUpdated = true;
 }
 
 export async function registerVote(gameId: number, votingRound: number, playerEmail: string, vote: string) {
@@ -31,8 +48,8 @@ export async function registerVote(gameId: number, votingRound: number, playerEm
     return;
   }
   const query = `insert into votes
-                     (game_id, voting_round, email, vote)
-                 values ($1, $2, $3, $4)`;
+                     (game_id, voting_round, email, vote, accepted)
+                 values ($1, $2, $3, $4, false)`;
   const values = [gameId, votingRound, playerEmail, vote];
   await connection.query(query, values);
 }
@@ -50,6 +67,15 @@ export async function registerVotingResults(gameId: number,
                  values ($1, $2, $3, $4, $5)`;
   const values = [gameId, votingRound, move, votesFor, totalVotes];
   await connection.query(query, values);
+
+
+  const query2 = `update votes
+                  set accepted = true
+                  where game_id = $1
+                    and voting_round = $2
+                    and vote = $3`;
+  const values2 = [gameId, votingRound, move];
+  await connection.query(query2, values2);
 }
 
 export async function winStats() {
@@ -68,29 +94,22 @@ export async function winStats() {
   return out;
 }
 
-export async function playerStats(email: string, group: Group) {
-  if (connection == null) {
-    return {
-      numVotes: 0,
-      numAccepted: 0,
-      numWinning: 0,
-    };
+export async function leaderboard() {
+  if(connection == null){
+    return null;
   }
-  const query = `with data as (select votes.id, votes.vote, gm.move, g.winner
-                               from votes
-                                        inner join game_moves gm
-                                                   on votes.game_id = gm.game_id and votes.voting_round = gm.voting_round
-                                        inner join games g on g.id = gm.game_id
-                               where email = $1
-                                 and winner != -1)
-                 select count(id)::int                                                      as votes,
-                        (select count(id)::int from data where move = vote)                 as accepted_moves,
-                        (select count(id)::int from data where move = vote and winner = $2) as winning_moves
-                 from data;`
-  const result = (await connection.query(query, [email, group])).rows[0];
-  return {
-    numVotes: parseInt(result.votes),
-    numAccepted: parseInt(result.accepted_moves),
-    numWinning: parseInt(result.winning_moves),
+  if (!leaderboardMaybeUpdated && leaderboard != null) {
+    return _leaderboard;
   }
+  const query = `select count(vote)::int as winning_votes, users.username
+                 from votes,
+                      users,
+                      games
+                 where votes.game_id = games.id
+                   and users.email = votes.email
+                   and votes.accepted = true
+                   and users.team = games.winner
+                 group by users.username
+                 order by winning_votes`
+  return (await connection.query(query)).rows[0];
 }

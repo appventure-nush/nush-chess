@@ -3,6 +3,11 @@ export type Group = 1 | 2;
 export type GameStatus = "waiting" | "playing";
 export type WaitingReason = "" | "noPlayers" | "noVotes" | "gameCompleted";
 
+export interface LeaderboardEntry {
+  numWinningMoves: number;
+  name: string;
+}
+
 export interface ServerToClientEvents {
   error: (error: string) => void;
   state: (data: { fen: string, nextVoteTime: number }) => void;
@@ -23,7 +28,7 @@ export interface ServerToClientEvents {
 export interface ClientToServerEvents {
   vote: (move: string) => void;
   auth: (token: string) => void;
-  playerStats: (callback: (data: { numVotes: number, numAccepted: number, numWinning: number }) => void) => void;
+  leaderboard: (callback: (data: LeaderboardEntry[]) => void) => void;
 }
 
 export interface InterServerEvents {

@@ -272,9 +272,9 @@ export default {
             app.initGame();
           }
 
-          // TODO: don't request player stats all the time
-          socket.emit("playerStats", (stats) => {
-            // TODO: do something with player stats
+          // TODO: don't request leaderboard all the time
+          socket.emit("leaderboard", (stats) => {
+            // TODO: do something with leaderboard
             console.log(stats);
           });
         }

@@ -15,7 +15,15 @@ import {
   WaitingReason
 } from "./types";
 import setupDatabase from "./database/setupdatabase";
-import {completeGame, newGame, playerStats, registerVote, registerVotingResults, winStats} from "./database/api";
+import {
+  completeGame,
+  newGame,
+  leaderboard,
+  registerUser,
+  registerVote,
+  registerVotingResults,
+  winStats
+} from "./database/api";
 import {getGroupFromRole, getRoleFromGroup, nextGameTime, otherGroup, sum} from "./util";
 import {ManagedTimer} from "./ManagedTimer";
 
@@ -133,8 +141,13 @@ io.on("connection", (socket) => {
       socket.data.numSkippedVotes = 0;
 
       if (!allowRoleOverride) {
-        if (sockets.some(s => s.data.email == decodedToken.unique_name)) {
-          return socket.emit("error", "You have already joined");
+        const s = sockets.find(s => s.data.email == decodedToken.unique_name);
+        if (s) {
+          socket.emit("error", "You have already joined");
+          s.emit("error", "You have already joined");
+          socket.disconnect();
+          s.disconnect();
+          return;
         }
         if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
           socket.data.group = 1;
@@ -144,6 +157,7 @@ io.on("connection", (socket) => {
       } else {
         socket.data.group = Math.random() > 0.5 ? 2 : 1;
       }
+      await registerUser(decodedToken.unique_name, decodedToken.name, socket.data.group);
       socket.data.email = decodedToken.unique_name;
 
       console.log("Connected", socket.data.group);
@@ -179,12 +193,12 @@ io.on("connection", (socket) => {
     }
   })
 
-  socket.on("playerStats", (callback) => {
+  socket.on("leaderboard", (callback) => {
     if (!socket.data.group || !socket.data.email) {
       socket.emit("error", "unauth");
       return;
     }
-    playerStats(socket.data.email, socket.data.group).then(data => {
+    leaderboard().then(data => {
       callback(data);
     })
   })
@@ -239,7 +253,7 @@ async function reset(switchTeams = true) {
   }
   gameId = await newGame(getGroupFromRole("w", currentGroupOne));
   votingRounds = 0;
-  game.reset()
+  game.reset();
   newVote();
   await sendGameInfoToAll();
   if (votingTimeout != null) {
