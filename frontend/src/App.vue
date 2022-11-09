@@ -1,6 +1,6 @@
 <template>
   <div class="flex flex-col gap-4">
-    <div v-if="state.auth || true" class="flex flex-col items-center gap-4">
+    <div v-if="state.auth" class="flex flex-col items-center gap-4">
       <span class="fixed top-0 left-0 p-4 text-xl">
         chess.<span class="text-nush-light">nush</span>.app
       </span>
