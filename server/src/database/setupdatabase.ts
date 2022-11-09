@@ -34,7 +34,8 @@ CREATE TABLE IF NOT EXISTS votes
     accepted       boolean,
     PRIMARY KEY(id),
     foreign key(game_id) references games(id),
-    foreign key(email) references users(email)
+    foreign key(email) references users(email),
+    unique(game_id, voting_round, email)
 );
 `
 

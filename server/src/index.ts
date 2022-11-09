@@ -98,6 +98,10 @@ io.on("connection", (socket) => {
     }
     // We don't actually want to make that move yet
     game.undo();
+    if(!await registerVote(gameId, votingRounds, socket.data.email, move)){
+      socket.emit("error", "You have already voted.");
+      return;
+    }
     if (votes == null) {
       return;
     }
@@ -108,8 +112,6 @@ io.on("connection", (socket) => {
     }
 
     socket.data.hasVoted = true;
-
-    await registerVote(gameId, votingRounds, socket.data.email, move);
 
     const numVotes = sum(Array.from(votes.values()));
     const players = playersPerGroup[getGroupFromRole(game.turn(), currentGroupOne)];

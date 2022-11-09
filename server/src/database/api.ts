@@ -43,15 +43,20 @@ export async function completeGame(gameId: number, winner: Group, timeout: boole
   leaderboardMaybeUpdated = true;
 }
 
-export async function registerVote(gameId: number, votingRound: number, playerEmail: string, vote: string) {
+export async function registerVote(gameId: number, votingRound: number, playerEmail: string, vote: string): Promise<boolean> {
   if (connection == null) {
-    return;
+    return true;
   }
   const query = `insert into votes
                      (game_id, voting_round, email, vote, accepted)
                  values ($1, $2, $3, $4, false)`;
   const values = [gameId, votingRound, playerEmail, vote];
-  await connection.query(query, values);
+  try{
+    await connection.query(query, values);
+    return true;
+  }catch (e) {
+    return false;
+  }
 }
 
 export async function registerVotingResults(gameId: number,
