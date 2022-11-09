@@ -1,6 +1,6 @@
 <template>
-  <div>
-    <div :id="id" ></div>
+  <div style="touch-action: none">
+    <div :id="id"></div>
   </div>
 </template>
 
