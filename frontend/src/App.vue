@@ -4,7 +4,7 @@
       v-if="state.auth"
       class="w-full h-full flex flex-col items-center gap-4"
     >
-      <span class="block w-full text-xl text-left pl-4">
+      <span class="block w-full text-xl text-left">
         chess.<span class="text-nush-light">nush</span>.app
       </span>
 
@@ -67,12 +67,12 @@
       <div class="flex-1">
         <div class="flex flex-col items-center gap-4 w-[80vw] max-w-[50vh]">
           <!-- tab view -->
-          <div class="h-[80vw] max-h-[55vh] mb-8">
+          <div class="h-[80vw] max-h-[55vh] mb-8 relative">
             <!-- status and board -->
             <div
               :class="
                 'flex flex-col align-middle justify-center' +
-                (state.tab != 0 ? ' hidden' : '')
+                (state.tab != 0 ? ' opacity-0' : '')
               "
             >
               <div class="text-2xl mb-2">
@@ -88,7 +88,7 @@
                 id="chessboard"
                 :game="state.game"
               ></Board>
-              <div v-if="state.gameStatus !== 'playing'" class="text-lg mb-2">
+              <div v-if="state.gameStatus === 'playing'" class="text-lg mb-2">
                 <span class="italic">
                   {{ state.numVotes }} votes of {{ state.numPlayers }} players
                 </span>
@@ -98,7 +98,13 @@
             <!-- vote history -->
             <div
               v-if="state.tab == 1"
-              class="flex flex-1 flex-col items-center justify-center"
+              class="
+                flex flex-1 flex-col
+                items-center
+                justify-center
+                absolute
+                top-0
+              "
             >
               <span class="text-lg mb-4"
                 >Top 10 votes for the previous round</span
@@ -119,7 +125,7 @@
                   </div>
                 </div>
                 <div class="min-h-[4rem] flex align-middle" v-else>
-                  <div class="m-auto">No votes</div>
+                  <div class="m-auto italic">No votes</div>
                 </div>
               </div>
             </div>
@@ -127,7 +133,13 @@
             <!-- leaderboard -->
             <div
               v-if="state.tab == 2"
-              class="flex flex-1 flex-col items-center justify-center"
+              class="
+                flex flex-1 flex-col
+                items-center
+                justify-center
+                absolute
+                top-0
+              "
             >
               <div
                 class="
@@ -139,7 +151,7 @@
                   max-w-[50vh]
                 "
               >
-                <div class="bg-chess-light text-black p-2 rounded-lg">
+                <div class="bg-chess-light text-black p-2 rounded-md">
                   <span class="text-xl">Team A</span>
                   <br />
                   <span> {{ awins }} win{{ awins == 1 ? "" : "s" }} </span>
@@ -502,7 +514,7 @@ export default {
             // NO need to do anything here
             // Handled by winner event
           } else if (waitingReason === "noPlayers") {
-            this.state.status = "Waiting for more players to join.";
+            this.state.status = "Waiting for more players.";
             app.state.game.reset();
           } else if (waitingReason === "gameCompleted") {
             console.log(this.state.status);
