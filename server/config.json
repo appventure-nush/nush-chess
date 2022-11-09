@@ -2,7 +2,7 @@
   "votingTimeoutSeconds": 30,
   "votingThreshold": 1,
   "numRequiredPlayers": 1,
-  "intergameDelaySeconds": 60,
+  "intergameDelaySeconds": 30,
   "allowRoleOverride": true,
   "host": "localhost",
   "user": "chess",

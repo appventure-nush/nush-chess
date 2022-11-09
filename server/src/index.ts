@@ -128,7 +128,6 @@ io.on("connection", (socket) => {
 
       const sockets = await io.fetchSockets();
 
-      socket.data.email = decodedToken.unique_name;
       socket.data.username = decodedToken.name;
       socket.data.hasVoted = false;
       socket.data.numSkippedVotes = 0;
@@ -145,6 +144,7 @@ io.on("connection", (socket) => {
       } else {
         socket.data.group = Math.random() > 0.5 ? 2 : 1;
       }
+      socket.data.email = decodedToken.unique_name;
 
       console.log("Connected", socket.data.group);
 
