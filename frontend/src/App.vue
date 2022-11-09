@@ -474,7 +474,7 @@ export default {
 
     socket.on("error", (error) => {
       console.log(error);
-      if (error.includes("not voting")) {
+      if (error.includes("not voting") || error.includes("already joined")) {
         alert(error);
       }
       app.state.errors.push(error);
