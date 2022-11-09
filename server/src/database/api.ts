@@ -111,5 +111,5 @@ export async function leaderboard() {
                    and users.team = games.winner
                  group by users.username
                  order by winning_votes`
-  return (await connection.query(query)).rows[0];
+  return (await connection.query(query)).rows;
 }

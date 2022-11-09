@@ -151,8 +151,8 @@
                 "
               >
                 <div class="flex flex-col" v-if="state.leaderboard.length">
-                  <span v-for="entry of state.leaderboard" :key="entry.name">
-                    {{ `${entry.name}: ${entry.score} points` }}
+                  <span v-for="entry of state.leaderboard" :key="entry.username">
+                    {{ `${entry.username}: ${entry.winning_votes} points` }}
                   </span>
                 </div>
                 <div class="min-h-[4rem] flex align-middle" v-else>
@@ -327,10 +327,10 @@ export default {
 
   computed: {
     awins() {
-      return this.state.numWins[0];
+      return this.state.numWins[1];
     },
     zwins() {
-      return this.state.numWins[1];
+      return this.state.numWins[2];
     },
   },
 
@@ -446,11 +446,7 @@ export default {
           app.initGame();
         }
 
-          // TODO: don't request leaderboard all the time
-          socket.emit("leaderboard", (stats) => {
-            // TODO: do something with leaderboard
-            console.log(stats);
-          });
+        app.refreshLeaderboard();
         }
     );
 

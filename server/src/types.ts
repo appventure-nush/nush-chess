@@ -4,8 +4,8 @@ export type GameStatus = "waiting" | "playing";
 export type WaitingReason = "" | "noPlayers" | "noVotes" | "gameCompleted";
 
 export interface LeaderboardEntry {
-  numWinningMoves: number;
-  name: string;
+  winning_votes: number;
+  username: string;
 }
 
 export interface ServerToClientEvents {
