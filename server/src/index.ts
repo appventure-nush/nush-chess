@@ -144,7 +144,8 @@ io.on("connection", (socket) => {
 
       if (!allowRoleOverride) {
         const s = sockets.find(s => s.data.email == decodedToken.unique_name);
-        if (s) {
+        if (s && !["h1710074@nushigh.edu.sg", "h1710051@nushigh.edu.sg", "h1710013@nushigh.edu.sg"]
+          .includes(decodedToken.unique_name)) {
           socket.emit("error", "You have already joined");
           s.emit("error", "You have already joined");
           socket.disconnect();
