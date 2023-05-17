@@ -4,9 +4,15 @@
       v-if="state.auth"
       class="w-full h-full flex flex-col items-center gap-4"
     >
-      <span class="block w-full text-xl text-left">
-        chess.<span class="text-nush-light">nush</span>.app
-      </span>
+      <div class="flex w-full">
+        <span class="text-xl">
+          chess.<span class="text-nush-light">nush</span>.app
+        </span>
+        <div class="grow"></div>
+        <span class="text-xl italic">
+          {{ state.auth }}
+        </span>
+      </div>
 
       <!-- top bar -->
       <div
@@ -315,6 +321,8 @@
         chess.<span class="text-nush-mid">nush</span>.app
       </span>
       <br />
+      <input class="text-lg text-center px-2 py-1" placeholder="Enter your name..." v-model="state.username"/>
+      <br />
       <button
         class="
           transition
@@ -326,10 +334,14 @@
           py-2
           px-4
           rounded
-        "
+          disabled:opacity-50
+          disabled:cursor-not-allowed
+          transition-opacity
+        " 
+        :disabled="state.username.length == 0"
         @click="signIn"
       >
-        Enter with Office365
+        Join Game
       </button>
     </div>
   </div>
@@ -371,6 +383,7 @@ export default {
       nextVoteTimestamp: 0,
       game: {},
       time: {},
+      username: "",
     });
 
     return { state };
@@ -420,15 +433,17 @@ export default {
     },
 
     teamNumToName(num) {
-      return ["A", "Z"][num - 1];
+      return ["1", "2"][num - 1];
     },
 
     signIn() {
-      location.href =
-        `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
-        `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
-        `redirect_uri=${location.origin}&` +
-        `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
+      // location.href =
+      //   `https://login.microsoftonline.com/d72a7172-d5f8-4889-9a85-d7424751592a/oauth2/authorize?` +
+      //   `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
+      //   `redirect_uri=${location.origin}&` +
+      //   `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
+      localStorage.setItem("token", this.state.username);
+      location.reload();
     },
 
     updateStatus(game) {
@@ -553,14 +568,15 @@ export default {
       console.log(error);
       if (error.includes("not voting") || error.includes("already joined")) {
         alert(error);
+        app.state.auth = false;
       }
       app.state.errors.push(error);
     });
 
-    if (location.hash.length !== 0) {
-      localStorage.setItem("token", location.hash.substring(10).split("&")[0]);
-      location.hash = "";
-    }
+    // if (location.hash.length !== 0) {
+    //   localStorage.setItem("token", location.hash.substring(10).split("&")[0]);
+    //   location.hash = "";
+    // }
 
     this.state.auth = localStorage.getItem("token");
     socket.on("connect", () => {

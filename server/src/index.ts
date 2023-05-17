@@ -124,44 +124,38 @@ io.on("connection", (socket) => {
     }
   })
 
-  socket.on("auth", async (token) => {
+  socket.on("auth", async (sent_name) => {
     try {
-      const decodedToken = (await verifyToken(token)) as {
-        // eslint-disable-next-line camelcase
-        unique_name: string
-        name: string
-      } | null;
-      if (decodedToken == null) {
-        socket.emit("error", "Invalid token");
-        return;
-      }
+      const name = sent_name;
+      const unique_name = sent_name;
 
       const sockets = await io.fetchSockets();
 
-      socket.data.username = decodedToken.name;
+      socket.data.username = name;
       socket.data.hasVoted = false;
       socket.data.numSkippedVotes = 0;
 
       if (!allowRoleOverride) {
-        const s = sockets.find(s => s.data.email == decodedToken.unique_name);
+        const s = sockets.find(s => s.data.email == unique_name);
         if (s && !["h1710074@nushigh.edu.sg", "h1710051@nushigh.edu.sg", "h1710013@nushigh.edu.sg"]
-          .includes(decodedToken.unique_name)) {
-          socket.emit("error", "You have already joined");
-          s.emit("error", "You have already joined");
-          socket.disconnect();
-          s.disconnect();
+          .includes(unique_name)) {
+          socket.emit("error", "You have already joined, or there is another user with the same name!");
+          // s.emit("error", "You have already joined, or there is another user with the same name!");
+          socket.disconnect(); // disconnect second copy
+          // s.disconnect();
           return;
         }
-        if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
-          socket.data.group = 1;
-        } else {
-          socket.data.group = 2;
-        }
+        // if (socket.data.username.toLowerCase().charCodeAt(0) <= "l".charCodeAt(0)) {
+        //   socket.data.group = 1;
+        // } else {
+        //   socket.data.group = 2;
+        // }
+        socket.data.group = Math.random() > 0.5 ? 2 : 1;
       } else {
         socket.data.group = Math.random() > 0.5 ? 2 : 1;
       }
-      await registerUser(decodedToken.unique_name, decodedToken.name, socket.data.group);
-      socket.data.email = decodedToken.unique_name;
+      await registerUser(unique_name, name, socket.data.group);
+      socket.data.email = unique_name;
 
       console.log("Connected", socket.data.group);
 
