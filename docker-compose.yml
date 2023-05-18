@@ -2,14 +2,13 @@ version: "3.8"
 
 networks:
   primary:
-    external:
-      name: primary
+    external: true
   nushchess:
     external: false
 
 services:
   server:
-    image: registry.nush.app/nush-chess:latest
+    build: .
     restart: always
     networks:
       - primary
@@ -25,6 +24,7 @@ services:
 
   db:
     image: postgres:alpine
+    restart: always
     environment:
       - POSTGRES_USER=chess
       - POSTGRES_PASSWORD=chess

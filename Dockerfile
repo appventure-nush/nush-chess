@@ -46,4 +46,5 @@ COPY --from=server-build /app/config.json ./server/config.json
 
 WORKDIR /app/server/
 
+EXPOSE 3001
 CMD ["pnpm", "start"]
