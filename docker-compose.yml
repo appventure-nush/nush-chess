@@ -8,7 +8,7 @@ networks:
 
 services:
   server:
-    build: .
+    image: registry.nush.app/nush-chess:latest
     restart: always
     networks:
       - primary
