@@ -1,0 +1,36 @@
+version: "3.8"
+
+networks:
+  primary:
+    external:
+      name: primary
+  nushchess:
+    external: false
+
+services:
+  server:
+    image: registry.nush.app/nush-chess:latest
+    restart: always
+    networks:
+      - primary
+      - nushchess
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.nush-chess.rule=Host(`chess.nush.app`)"
+      - "traefik.http.routers.nush-chess.entrypoints=https"
+      - "traefik.http.routers.nush-chess.tls=true"
+      - "traefik.http.routers.nush-chess.tls.certresolver=tlsresolver"
+    depends_on:
+      - db
+
+  db:
+    image: postgres:alpine
+    environment:
+      - POSTGRES_USER=chess
+      - POSTGRES_PASSWORD=chess
+      - POSTGRES_DB=chess
+    volumes:
+      - ./db:/var/lib/postgresql/data
+    networks:
+      - nushchess
+
