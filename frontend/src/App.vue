@@ -442,7 +442,7 @@ export default {
       //   `client_id=c8115b04-01cf-451e-a9bb-95170936d45e&` +
       //   `redirect_uri=${location.origin}&` +
       //   `response_type=id_token&nonce=distributed-chess&scopes=User.Read`;
-      localStorage.setItem("token", this.state.username);
+      localStorage.setItem("username", this.state.username);
       location.reload();
     },
 
@@ -578,7 +578,7 @@ export default {
     //   location.hash = "";
     // }
 
-    this.state.auth = localStorage.getItem("token");
+    this.state.auth = localStorage.getItem("username");
     socket.on("connect", () => {
       if (location.origin.includes("http://")) {
         document.title = socket.id;
