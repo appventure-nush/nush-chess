@@ -17,15 +17,15 @@ export async function registerUser(email: string, name: string, group: Group) {
   return;
 }
 
-export async function getUserTeam(email: string): Promise<null | Group> {
+export async function getUserTeam(email: string): Promise<undefined | Group> {
   if (connection == null) {
-    return null;
+    return undefined;
   }
   const query = `select team from users where email=$1`
   const values = [email];
   const res = await connection.query(query, values);
   if (res.rows.length == 0) {
-    return null;
+    return undefined;
   } else {
     return res.rows[0].team;
   }

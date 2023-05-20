@@ -152,7 +152,7 @@ io.on("connection", (socket) => {
         //   socket.data.group = 2;
         // }
         socket.data.group = await getUserTeam(unique_name);
-        if (socket.data.group == null) {
+        if (!socket.data.group) {
           socket.data.group = Math.random() > 0.5 ? 2 : 1;
         }
       } else {
