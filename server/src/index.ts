@@ -22,7 +22,8 @@ import {
   registerUser,
   registerVote,
   registerVotingResults,
-  winStats
+  winStats,
+  getUserTeam
 } from "./database/api";
 import {getGroupFromRole, getRoleFromGroup, nextGameTime, otherGroup, sum} from "./util";
 import {ManagedTimer} from "./ManagedTimer";
@@ -150,7 +151,10 @@ io.on("connection", (socket) => {
         // } else {
         //   socket.data.group = 2;
         // }
-        socket.data.group = Math.random() > 0.5 ? 2 : 1;
+        socket.data.group = getUserTeam(unique_name);
+        if (socket.data.group == null) {
+          socket.data.group = Math.random() > 0.5 ? 2 : 1;
+        }
       } else {
         socket.data.group = Math.random() > 0.5 ? 2 : 1;
       }

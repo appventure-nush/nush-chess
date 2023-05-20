@@ -17,6 +17,17 @@ export async function registerUser(email: string, name: string, group: Group) {
   return;
 }
 
+export async function getUserTeam(email: string) {
+  const query = `select team from users where email=$1`
+  const values = [email];
+  const res = await connection.query(query, values);
+  if (res.rows.length == 0) {
+    return null;
+  } else {
+    return res.rows[0].team;
+  }
+}
+
 export async function newGame(whiteTeam: Group) {
   if (connection == null) {
     return -1;
