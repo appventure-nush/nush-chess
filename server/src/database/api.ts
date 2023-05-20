@@ -18,6 +18,9 @@ export async function registerUser(email: string, name: string, group: Group) {
 }
 
 export async function getUserTeam(email: string) {
+  if (connection == null) {
+    return -1;
+  }
   const query = `select team from users where email=$1`
   const values = [email];
   const res = await connection.query(query, values);
