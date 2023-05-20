@@ -17,7 +17,7 @@ export async function registerUser(email: string, name: string, group: Group) {
   return;
 }
 
-export async function getUserTeam(email: string): Promise<null | number> {
+export async function getUserTeam(email: string): Promise<null | Group> {
   if (connection == null) {
     return null;
   }
