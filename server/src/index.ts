@@ -164,7 +164,7 @@ io.on("connection", (socket) => {
       console.log("Connected", socket.data.group);
 
 
-      playersPerGroup[socket.data.group] += 1;
+      if (unique_name !== "admin") playersPerGroup[socket.data.group] += 1;
       console.log("players per group", playersPerGroup);
 
       if (gameStatus == 'waiting') {
