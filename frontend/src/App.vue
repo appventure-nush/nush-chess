@@ -321,7 +321,7 @@
         chess.<span class="text-nush-mid">nush</span>.app
       </span>
       <br />
-      <input class="text-lg text-center px-2 py-1" placeholder="Enter your name..." v-model="state.username"/>
+      <input class="text-lg text-center px-2 py-1 text-white bg-black" placeholder="Enter your name..." v-model="state.username"/>
       <br />
       <button
         class="
