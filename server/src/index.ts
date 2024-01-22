@@ -375,7 +375,7 @@ async function pruneUsers(currentGroup: Group) {
         socket.data.numSkippedVotes = 0;
       }
       if (socket.data.numSkippedVotes >= noVoteThreshold &&
-        !["h1710074@nushigh.edu.sg", "h1710051@nushigh.edu.sg", "h1710013@nushigh.edu.sg"]
+        !["h1710074@nushigh.edu.sg", "h1710051@nushigh.edu.sg", "h1710013@nushigh.edu.sg", "admin"]
           .includes(socket.data.email)) {
         // Bye
         console.log("kicked", socket.id);
