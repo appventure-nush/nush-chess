@@ -209,7 +209,7 @@ io.on("connection", (socket) => {
       return
     }
     console.log("Disconnected", socket.data.group);
-    playersPerGroup[socket.data.group] -= 1;
+    if (socket.data.email !== "admin") playersPerGroup[socket.data.group] -= 1;
     console.log("players per group", playersPerGroup);
     // Maybe not enough players for game?
     if (gameResetTimer?.running()) {
